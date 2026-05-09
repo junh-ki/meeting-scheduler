@@ -1,0 +1,48 @@
+package org.example.meetingscheduler.user;
+
+import java.util.Collections;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+
+    @InjectMocks
+    private UserService userService;
+    @Mock
+    private UserRepository userRepository;
+    @Mock
+    private UserMapper userMapper;
+
+    @Test
+    void getUsers_returnsEmptyList_whenRepositoryIsEmpty() {
+        // Arrange
+        when(this.userRepository.findAll()).thenReturn(Collections.emptyList());
+
+        // Act & Assert
+        assertThat(this.userService.getUsers()).isEmpty();
+    }
+
+    @Test
+    void getUsers_returnsMappedDtos() {
+        // Arrange
+        final UserEntity userEntity = UserEntity.builder()
+            .id(1L)
+            .name("Alice")
+            .email("alice@example.com")
+            .build();
+        final UserResponseDto userResponseDto = new UserResponseDto(1L, "Alice", "alice@example.com");
+        when(this.userRepository.findAll()).thenReturn(List.of(userEntity));
+        when(this.userMapper.toDto(userEntity)).thenReturn(userResponseDto);
+
+        // Act & Assert
+        assertThat(this.userService.getUsers()).containsExactly(userResponseDto);
+    }
+}
