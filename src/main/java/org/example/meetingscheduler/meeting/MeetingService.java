@@ -12,8 +12,7 @@ public class MeetingService {
     private final MeetingMapper meetingMapper;
 
     public List<MeetingResponseDto> getMeetings() {
-        return this.meetingRepository.findAll()
-            .stream()
+        return this.meetingRepository.findAll().stream()
             .map(this.meetingMapper::toDto)
             .toList();
     }
