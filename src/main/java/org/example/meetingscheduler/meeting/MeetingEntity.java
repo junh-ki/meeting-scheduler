@@ -42,7 +42,7 @@ public class MeetingEntity {
     @Column(nullable = false)
     private LocalDateTime endTime;
 
-    @JoinColumn(name = "app_user_id")
+    @JoinColumn(name = "app_user_id", nullable = false)
     @OneToOne(fetch = FetchType.LAZY)
     private UserEntity organizer;
 

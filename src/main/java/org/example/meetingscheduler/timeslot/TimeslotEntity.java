@@ -30,7 +30,7 @@ public class TimeslotEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @JoinColumn(name = "app_user_id")
+    @JoinColumn(name = "app_user_id", nullable = false)
     @ManyToOne(fetch = FetchType.LAZY)
     private UserEntity organizer;
 
