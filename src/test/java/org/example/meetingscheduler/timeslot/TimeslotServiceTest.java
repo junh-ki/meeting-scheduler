@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 import org.example.meetingscheduler.user.UserEntity;
 import org.example.meetingscheduler.user.UserRepository;
-import org.example.meetingscheduler.user.UserResponseDto;
+import org.example.meetingscheduler.user.dto.UserResponseDto;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

@@ -1,6 +1,6 @@
 package org.example.meetingscheduler.participant;
 
-import org.example.meetingscheduler.user.UserResponseDto;
+import org.example.meetingscheduler.user.dto.UserResponseDto;
 
 public record ParticipantResponseDto(
     Long id,

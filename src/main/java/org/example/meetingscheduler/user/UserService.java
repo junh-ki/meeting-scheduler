@@ -2,6 +2,8 @@ package org.example.meetingscheduler.user;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.example.meetingscheduler.user.dto.UserRequestDto;
+import org.example.meetingscheduler.user.dto.UserResponseDto;
 import org.springframework.stereotype.Service;
 
 @Service

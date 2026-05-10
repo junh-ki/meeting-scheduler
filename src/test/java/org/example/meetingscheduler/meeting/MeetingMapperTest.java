@@ -6,7 +6,7 @@ import java.util.List;
 import org.example.meetingscheduler.participant.ParticipantEntity;
 import org.example.meetingscheduler.participant.ParticipantResponseDto;
 import org.example.meetingscheduler.user.UserEntity;
-import org.example.meetingscheduler.user.UserResponseDto;
+import org.example.meetingscheduler.user.dto.UserResponseDto;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

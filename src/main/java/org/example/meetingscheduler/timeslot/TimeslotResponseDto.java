@@ -1,7 +1,7 @@
 package org.example.meetingscheduler.timeslot;
 
 import java.time.LocalDateTime;
-import org.example.meetingscheduler.user.UserResponseDto;
+import org.example.meetingscheduler.user.dto.UserResponseDto;
 
 public record TimeslotResponseDto(
     Long id,

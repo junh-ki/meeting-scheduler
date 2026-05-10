@@ -3,7 +3,7 @@ package org.example.meetingscheduler.meeting;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
-import org.example.meetingscheduler.user.UserResponseDto;
+import org.example.meetingscheduler.user.dto.UserResponseDto;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

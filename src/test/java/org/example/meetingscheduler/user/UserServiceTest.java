@@ -2,6 +2,8 @@ package org.example.meetingscheduler.user;
 
 import java.util.Collections;
 import java.util.List;
+import org.example.meetingscheduler.user.dto.UserRequestDto;
+import org.example.meetingscheduler.user.dto.UserResponseDto;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

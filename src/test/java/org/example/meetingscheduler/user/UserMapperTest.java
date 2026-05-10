@@ -1,5 +1,6 @@
 package org.example.meetingscheduler.user;
 
+import org.example.meetingscheduler.user.dto.UserResponseDto;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

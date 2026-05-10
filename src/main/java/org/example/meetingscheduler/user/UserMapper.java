@@ -1,5 +1,6 @@
 package org.example.meetingscheduler.user;
 
+import org.example.meetingscheduler.user.dto.UserResponseDto;
 import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")

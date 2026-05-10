@@ -1,4 +1,4 @@
-package org.example.meetingscheduler.user;
+package org.example.meetingscheduler.user.dto;
 
 public record UserRequestDto(
     String name,
