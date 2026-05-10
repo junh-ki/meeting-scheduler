@@ -48,7 +48,7 @@ info "Postgres is ${GREEN}ready${RESET}."
 
 # ── 2. build ──────────────────────────────────────────────────────────────────
 info "Building application ${DIM}(tests skipped)${RESET}..."
-./mvnw package -DskipTests -q
+./mvnw clean package -DskipTests -q
 info "Build ${GREEN}complete${RESET}."
 
 # ── 3. run ────────────────────────────────────────────────────────────────────
