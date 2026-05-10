@@ -16,4 +16,15 @@ public class UserService {
             .map(this.userMapper::toDto)
             .toList();
     }
+
+    public UserResponseDto createUser(final UserRequestDto userRequestDto) {
+        return this.userMapper.toDto(
+            this.userRepository.save(
+                UserEntity.builder()
+                    .name(userRequestDto.name())
+                    .email(userRequestDto.email())
+                    .build()
+            )
+        );
+    }
 }

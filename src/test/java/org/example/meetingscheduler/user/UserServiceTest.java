@@ -45,4 +45,25 @@ class UserServiceTest {
         // Act & Assert
         assertThat(this.userService.getUsers()).containsExactly(userResponseDto);
     }
+
+    @Test
+    void createUser_savesAndReturnsMappedDto() {
+        // Arrange
+        final UserRequestDto userRequestDto = new UserRequestDto("Alice", "alice@example.com");
+        final UserEntity savedEntity = UserEntity.builder()
+            .id(1L)
+            .name("Alice")
+            .email("alice@example.com")
+            .build();
+        final UserResponseDto userResponseDto = new UserResponseDto(1L, "Alice", "alice@example.com");
+        final UserEntity unsavedEntity = UserEntity.builder()
+            .name("Alice")
+            .email("alice@example.com")
+            .build();
+        when(this.userRepository.save(unsavedEntity)).thenReturn(savedEntity);
+        when(this.userMapper.toDto(savedEntity)).thenReturn(userResponseDto);
+
+        // Act & Assert
+        assertThat(this.userService.createUser(userRequestDto)).isEqualTo(userResponseDto);
+    }
 }
