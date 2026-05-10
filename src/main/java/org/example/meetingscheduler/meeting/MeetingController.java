@@ -2,7 +2,11 @@ package org.example.meetingscheduler.meeting;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -14,5 +18,11 @@ public class MeetingController {
     @GetMapping("/meetings")
     public List<MeetingResponseDto> getMeetings() {
         return this.meetingService.getMeetings();
+    }
+
+    @PostMapping("/meetings")
+    @ResponseStatus(HttpStatus.CREATED)
+    public MeetingResponseDto createMeeting(@RequestBody final MeetingCreateRequestDto meetingCreateRequestDto) {
+        return this.meetingService.createMeeting(meetingCreateRequestDto);
     }
 }
