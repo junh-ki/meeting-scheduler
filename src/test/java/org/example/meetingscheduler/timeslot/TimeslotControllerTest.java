@@ -2,6 +2,8 @@ package org.example.meetingscheduler.timeslot;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import org.example.meetingscheduler.timeslot.dto.TimeslotResponseDto;
+import org.example.meetingscheduler.timeslot.dto.TimeslotUpdateRequestDto;
 import org.example.meetingscheduler.user.dto.UserResponseDto;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -3,6 +3,8 @@ package org.example.meetingscheduler.timeslot;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.example.meetingscheduler.timeslot.dto.TimeslotResponseDto;
+import org.example.meetingscheduler.timeslot.dto.TimeslotUpdateRequestDto;
 import org.example.meetingscheduler.user.UserEntity;
 import org.example.meetingscheduler.user.UserRepository;
 import org.example.meetingscheduler.user.dto.UserResponseDto;
