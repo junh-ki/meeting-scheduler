@@ -3,6 +3,8 @@ package org.example.meetingscheduler.meeting;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.example.meetingscheduler.meeting.dto.MeetingCreateRequestDto;
+import org.example.meetingscheduler.meeting.dto.MeetingResponseDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;

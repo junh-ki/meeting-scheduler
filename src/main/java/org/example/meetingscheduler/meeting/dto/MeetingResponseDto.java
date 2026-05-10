@@ -1,4 +1,4 @@
-package org.example.meetingscheduler.meeting;
+package org.example.meetingscheduler.meeting.dto;
 
 import java.time.LocalDateTime;
 import java.util.List;
