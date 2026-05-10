@@ -1,6 +1,7 @@
 package org.example.meetingscheduler.user;
 
 import java.util.List;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.meetingscheduler.user.dto.UserRequestDto;
 import org.example.meetingscheduler.user.dto.UserResponseDto;
@@ -24,7 +25,7 @@ public class UserController {
 
     @PostMapping("/users")
     @ResponseStatus(HttpStatus.CREATED)
-    public UserResponseDto createUser(@RequestBody final UserRequestDto userRequestDto) {
+    public UserResponseDto createUser(@RequestBody @Valid final UserRequestDto userRequestDto) {
         return this.userService.createUser(userRequestDto);
     }
 }

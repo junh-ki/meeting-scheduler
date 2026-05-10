@@ -1,5 +1,6 @@
 package org.example.meetingscheduler.timeslot;
 
+import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +39,7 @@ public class TimeslotController {
     @PutMapping("/timeslots/{id}")
     @ResponseStatus(HttpStatus.OK)
     public TimeslotResponseDto updateTimeslot(@PathVariable final Long id,
-                                              @RequestBody final TimeslotUpdateRequestDto timeslotUpdateRequestDto) {
+                                              @RequestBody @Valid final TimeslotUpdateRequestDto timeslotUpdateRequestDto) {
         return this.timeslotService.updateTimeslot(
             id,
             timeslotUpdateRequestDto

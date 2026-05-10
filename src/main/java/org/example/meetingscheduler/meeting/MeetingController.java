@@ -1,5 +1,6 @@
 package org.example.meetingscheduler.meeting;
 
+import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,7 +23,7 @@ public class MeetingController {
 
     @PostMapping("/meetings")
     @ResponseStatus(HttpStatus.CREATED)
-    public MeetingResponseDto createMeeting(@RequestBody final MeetingCreateRequestDto meetingCreateRequestDto) {
+    public MeetingResponseDto createMeeting(@RequestBody @Valid final MeetingCreateRequestDto meetingCreateRequestDto) {
         return this.meetingService.createMeeting(meetingCreateRequestDto);
     }
 }

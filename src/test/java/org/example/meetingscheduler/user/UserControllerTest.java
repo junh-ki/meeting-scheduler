@@ -52,6 +52,24 @@ class UserControllerTest {
     }
 
     @Test
+    void createUser_returnsBadRequest_whenNameIsBlank() throws Exception {
+        // Arrange & Act & Assert
+        this.mockMvc.perform(post("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"\",\"email\":\"alice@example.com\"}"))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createUser_returnsBadRequest_whenEmailIsInvalid() throws Exception {
+        // Arrange & Act & Assert
+        this.mockMvc.perform(post("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Alice\",\"email\":\"not-an-email\"}"))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void createUser_returnsCreatedUser() throws Exception {
         // Arrange
         when(this.userService.createUser(new UserRequestDto("Alice", "alice@example.com")))

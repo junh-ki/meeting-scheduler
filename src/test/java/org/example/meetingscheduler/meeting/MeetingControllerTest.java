@@ -87,6 +87,33 @@ class MeetingControllerTest {
     }
 
     @Test
+    void createMeeting_returnsBadRequest_whenTimeslotIdIsNull() throws Exception {
+        // Arrange & Act & Assert
+        this.mockMvc.perform(post("/meetings")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Sync\",\"participantUserIds\":[]}"))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createMeeting_returnsBadRequest_whenTitleIsBlank() throws Exception {
+        // Arrange & Act & Assert
+        this.mockMvc.perform(post("/meetings")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"timeslotId\":10,\"title\":\"\",\"participantUserIds\":[]}"))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createMeeting_returnsBadRequest_whenParticipantUserIdsIsNull() throws Exception {
+        // Arrange & Act & Assert
+        this.mockMvc.perform(post("/meetings")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"timeslotId\":10,\"title\":\"Sync\"}"))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void createMeeting_returnsNotFound_whenTimeslotDoesNotExist() throws Exception {
         // Arrange
         when(this.meetingService.createMeeting(any(MeetingCreateRequestDto.class)))
