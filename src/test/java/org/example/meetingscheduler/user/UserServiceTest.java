@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.List;
 import org.example.meetingscheduler.user.dto.UserRequestDto;
 import org.example.meetingscheduler.user.dto.UserResponseDto;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -27,77 +28,85 @@ class UserServiceTest {
     @Mock
     private UserMapper userMapper;
 
-    @Test
-    void getUsers_returnsEmptyList_whenRepositoryIsEmpty() {
-        // Arrange
-        when(this.userRepository.findAll()).thenReturn(Collections.emptyList());
+    @Nested
+    class getUsers {
 
-        // Act & Assert
-        assertThat(this.userService.getUsers()).isEmpty();
+        @Test
+        void returnsEmptyList_whenRepositoryIsEmpty() {
+            // Arrange
+            when(userRepository.findAll()).thenReturn(Collections.emptyList());
+
+            // Act & Assert
+            assertThat(userService.getUsers()).isEmpty();
+        }
+
+        @Test
+        void returnsMappedDtos() {
+            // Arrange
+            final UserEntity userEntity = UserEntity.builder()
+                .id(1L)
+                .name("Alice")
+                .email("alice@example.com")
+                .build();
+            final UserResponseDto userResponseDto = new UserResponseDto(1L, "Alice", "alice@example.com");
+            when(userRepository.findAll()).thenReturn(List.of(userEntity));
+            when(userMapper.toDto(userEntity)).thenReturn(userResponseDto);
+
+            // Act & Assert
+            assertThat(userService.getUsers()).containsExactly(userResponseDto);
+        }
     }
 
-    @Test
-    void getUsers_returnsMappedDtos() {
-        // Arrange
-        final UserEntity userEntity = UserEntity.builder()
-            .id(1L)
-            .name("Alice")
-            .email("alice@example.com")
-            .build();
-        final UserResponseDto userResponseDto = new UserResponseDto(1L, "Alice", "alice@example.com");
-        when(this.userRepository.findAll()).thenReturn(List.of(userEntity));
-        when(this.userMapper.toDto(userEntity)).thenReturn(userResponseDto);
+    @Nested
+    class createUser {
 
-        // Act & Assert
-        assertThat(this.userService.getUsers()).containsExactly(userResponseDto);
-    }
+        @Test
+        void savesAndReturnsMappedDto() {
+            // Arrange
+            final UserRequestDto userRequestDto = new UserRequestDto("Alice", "alice@example.com");
+            final UserEntity savedEntity = UserEntity.builder()
+                .id(1L)
+                .name("Alice")
+                .email("alice@example.com")
+                .build();
+            final UserResponseDto userResponseDto = new UserResponseDto(1L, "Alice", "alice@example.com");
+            final UserEntity unsavedEntity = UserEntity.builder()
+                .name("Alice")
+                .email("alice@example.com")
+                .build();
+            when(userRepository.existsByEmail("alice@example.com")).thenReturn(false);
+            when(userRepository.save(unsavedEntity)).thenReturn(savedEntity);
+            when(userMapper.toDto(savedEntity)).thenReturn(userResponseDto);
 
-    @Test
-    void createUser_savesAndReturnsMappedDto() {
-        // Arrange
-        final UserRequestDto userRequestDto = new UserRequestDto("Alice", "alice@example.com");
-        final UserEntity savedEntity = UserEntity.builder()
-            .id(1L)
-            .name("Alice")
-            .email("alice@example.com")
-            .build();
-        final UserResponseDto userResponseDto = new UserResponseDto(1L, "Alice", "alice@example.com");
-        final UserEntity unsavedEntity = UserEntity.builder()
-            .name("Alice")
-            .email("alice@example.com")
-            .build();
-        when(this.userRepository.existsByEmail("alice@example.com")).thenReturn(false);
-        when(this.userRepository.save(unsavedEntity)).thenReturn(savedEntity);
-        when(this.userMapper.toDto(savedEntity)).thenReturn(userResponseDto);
+            // Act & Assert
+            assertThat(userService.createUser(userRequestDto)).isEqualTo(userResponseDto);
+        }
 
-        // Act & Assert
-        assertThat(this.userService.createUser(userRequestDto)).isEqualTo(userResponseDto);
-    }
+        @Test
+        void throwsConflict_whenEmailAlreadyExists() {
+            // Arrange
+            when(userRepository.existsByEmail("alice@example.com")).thenReturn(true);
 
-    @Test
-    void createUser_throwsConflict_whenEmailAlreadyExists() {
-        // Arrange
-        when(this.userRepository.existsByEmail("alice@example.com")).thenReturn(true);
+            // Act & Assert
+            assertThatThrownBy(() -> userService.createUser(new UserRequestDto("Alice", "alice@example.com")))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        }
 
-        // Act & Assert
-        assertThatThrownBy(() -> this.userService.createUser(new UserRequestDto("Alice", "alice@example.com")))
-            .isInstanceOf(ResponseStatusException.class)
-            .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-            .isEqualTo(HttpStatus.CONFLICT);
-    }
+        @Test
+        void throwsConflict_whenConcurrentInsertViolatesUniqueConstraint() {
+            // Arrange: existsByEmail passes the check but save races and hits the DB constraint
+            final UserEntity unsavedUserEntity = UserEntity.builder()
+                .name("Alice").email("alice@example.com").build();
+            when(userRepository.existsByEmail("alice@example.com")).thenReturn(false);
+            when(userRepository.save(unsavedUserEntity)).thenThrow(new DataIntegrityViolationException("unique constraint"));
 
-    @Test
-    void createUser_throwsConflict_whenConcurrentInsertViolatesUniqueConstraint() {
-        // Arrange: existsByEmail passes the check but save races and hits the DB constraint
-        final UserEntity unsavedUserEntity = UserEntity.builder()
-            .name("Alice").email("alice@example.com").build();
-        when(this.userRepository.existsByEmail("alice@example.com")).thenReturn(false);
-        when(this.userRepository.save(unsavedUserEntity)).thenThrow(new DataIntegrityViolationException("unique constraint"));
-
-        // Act & Assert
-        assertThatThrownBy(() -> this.userService.createUser(new UserRequestDto("Alice", "alice@example.com")))
-            .isInstanceOf(ResponseStatusException.class)
-            .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-            .isEqualTo(HttpStatus.CONFLICT);
+            // Act & Assert
+            assertThatThrownBy(() -> userService.createUser(new UserRequestDto("Alice", "alice@example.com")))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        }
     }
 }

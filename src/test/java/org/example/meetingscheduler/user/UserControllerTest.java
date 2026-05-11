@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.List;
 import org.example.meetingscheduler.user.dto.UserRequestDto;
 import org.example.meetingscheduler.user.dto.UserResponseDto;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -29,75 +30,83 @@ class UserControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Test
-    void getUsers_returnsEmptyArray_whenNoUsers() throws Exception {
-        // Arrange
-        when(this.userService.getUsers()).thenReturn(Collections.emptyList());
+    @Nested
+    class getUsers {
 
-        // Act & Assert
-        this.mockMvc.perform(get("/users"))
-            .andExpect(status().isOk())
-            .andExpect(content().json("[]"));
+        @Test
+        void returnsEmptyArray_whenNoUsers() throws Exception {
+            // Arrange
+            when(userService.getUsers()).thenReturn(Collections.emptyList());
+
+            // Act & Assert
+            mockMvc.perform(get("/users"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
+        }
+
+        @Test
+        void returnsUsers() throws Exception {
+            // Arrange
+            when(userService.getUsers()).thenReturn(List.of(
+                new UserResponseDto(1L, "Alice", "alice@example.com")));
+
+            // Act & Assert
+            mockMvc.perform(get("/users"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(1))
+                .andExpect(jsonPath("$[0].name").value("Alice"))
+                .andExpect(jsonPath("$[0].email").value("alice@example.com"));
+        }
     }
 
-    @Test
-    void getUsers_returnsUsers() throws Exception {
-        // Arrange
-        when(this.userService.getUsers()).thenReturn(List.of(
-            new UserResponseDto(1L, "Alice", "alice@example.com")));
+    @Nested
+    class createUser {
 
-        // Act & Assert
-        this.mockMvc.perform(get("/users"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].id").value(1))
-            .andExpect(jsonPath("$[0].name").value("Alice"))
-            .andExpect(jsonPath("$[0].email").value("alice@example.com"));
-    }
+        @Test
+        void returnsConflict_whenEmailAlreadyExists() throws Exception {
+            // Arrange
+            when(userService.createUser(any(UserRequestDto.class)))
+                .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Email is already in use"));
 
-    @Test
-    void createUser_returnsConflict_whenEmailAlreadyExists() throws Exception {
-        // Arrange
-        when(this.userService.createUser(any(UserRequestDto.class)))
-            .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Email is already in use"));
+            // Act & Assert
+            mockMvc.perform(post("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"Alice\",\"email\":\"alice@example.com\"}"))
+                .andExpect(status().isConflict());
+        }
 
-        // Act & Assert
-        this.mockMvc.perform(post("/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Alice\",\"email\":\"alice@example.com\"}"))
-            .andExpect(status().isConflict());
-    }
+        @Test
+        void returnsBadRequest_whenNameIsBlank() throws Exception {
+            // Arrange & Act & Assert
+            mockMvc.perform(post("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"\",\"email\":\"alice@example.com\"}"))
+                .andExpect(status().isBadRequest());
+        }
 
-    @Test
-    void createUser_returnsBadRequest_whenNameIsBlank() throws Exception {
-        // Arrange & Act & Assert
-        this.mockMvc.perform(post("/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"\",\"email\":\"alice@example.com\"}"))
-            .andExpect(status().isBadRequest());
-    }
+        @Test
+        void returnsBadRequest_whenEmailIsInvalid() throws Exception {
+            // Arrange & Act & Assert
+            mockMvc.perform(post("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"Alice\",\"email\":\"not-an-email\"}"))
+                .andExpect(status().isBadRequest());
+        }
 
-    @Test
-    void createUser_returnsBadRequest_whenEmailIsInvalid() throws Exception {
-        // Arrange & Act & Assert
-        this.mockMvc.perform(post("/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Alice\",\"email\":\"not-an-email\"}"))
-            .andExpect(status().isBadRequest());
-    }
+        @Test
+        void returnsCreatedUser() throws Exception {
+            // Arrange
+            when(userService.createUser(new UserRequestDto("Alice", "alice@example.com")))
+                .thenReturn(new UserResponseDto(1L, "Alice", "alice@example.com"));
 
-    @Test
-    void createUser_returnsCreatedUser() throws Exception {
-        // Arrange
-        when(this.userService.createUser(new UserRequestDto("Alice", "alice@example.com")))
-            .thenReturn(new UserResponseDto(1L, "Alice", "alice@example.com"));
-
-        // Act & Assert
-        this.mockMvc.perform(post("/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Alice\",\"email\":\"alice@example.com\"}"))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.id").value(1))
-            .andExpect(jsonPath("$.name").value("Alice"))
-            .andExpect(jsonPath("$.email").value("alice@example.com"));
+            // Act & Assert
+            mockMvc.perform(post("/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"name\":\"Alice\",\"email\":\"alice@example.com\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.name").value("Alice"))
+                .andExpect(jsonPath("$.email").value("alice@example.com"));
+        }
     }
 }
