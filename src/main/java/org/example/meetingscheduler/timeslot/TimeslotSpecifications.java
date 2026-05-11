@@ -36,4 +36,13 @@ public final class TimeslotSpecifications {
                 criteriaBuilder.greaterThanOrEqualTo(root.get("endTime"), startTime)
             );
     }
+
+    public static Specification<TimeslotEntity> coversRange(final LocalDateTime startTime,
+                                                            final LocalDateTime endTime) {
+        return (root, criteriaQuery, criteriaBuilder) ->
+            criteriaBuilder.and(
+                criteriaBuilder.lessThanOrEqualTo(root.get("startTime"), startTime),
+                criteriaBuilder.greaterThanOrEqualTo(root.get("endTime"), endTime)
+            );
+    }
 }
