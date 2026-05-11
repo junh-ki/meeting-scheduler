@@ -1,6 +1,7 @@
 # TODO
 
 1. Postman collection
+2. Arch Diagram
 
 ---
 
