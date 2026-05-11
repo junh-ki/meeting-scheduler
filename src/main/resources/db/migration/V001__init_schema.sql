@@ -1,10 +1,10 @@
-CREATE TABLE app_user (
+CREATE TABLE IF NOT EXISTS app_user (
     id    BIGSERIAL PRIMARY KEY,
     name  VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL
 );
 
-CREATE TABLE meeting (
+CREATE TABLE IF NOT EXISTS meeting (
     id            BIGSERIAL PRIMARY KEY,
     title         VARCHAR(255) NOT NULL,
     description   TEXT,
@@ -13,14 +13,14 @@ CREATE TABLE meeting (
     app_user_id   BIGINT REFERENCES app_user (id)
 );
 
-CREATE TABLE participant (
+CREATE TABLE IF NOT EXISTS participant (
     id            BIGSERIAL PRIMARY KEY,
     meeting_id    BIGINT NOT NULL REFERENCES meeting (id),
     app_user_id   BIGINT NOT NULL REFERENCES app_user (id),
     UNIQUE (meeting_id, app_user_id)
 );
 
-CREATE TABLE timeslot (
+CREATE TABLE IF NOT EXISTS timeslot (
     id            BIGSERIAL   PRIMARY KEY,
     app_user_id   BIGINT REFERENCES app_user (id),
     start_time    TIMESTAMP   NOT NULL,
