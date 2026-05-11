@@ -9,7 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -78,6 +78,21 @@ class UserServiceTest {
     void createUser_throwsConflict_whenEmailAlreadyExists() {
         // Arrange
         when(this.userRepository.existsByEmail("alice@example.com")).thenReturn(true);
+
+        // Act & Assert
+        assertThatThrownBy(() -> this.userService.createUser(new UserRequestDto("Alice", "alice@example.com")))
+            .isInstanceOf(ResponseStatusException.class)
+            .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+            .isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
+    void createUser_throwsConflict_whenConcurrentInsertViolatesUniqueConstraint() {
+        // Arrange: existsByEmail passes the check but save races and hits the DB constraint
+        final UserEntity unsavedUserEntity = UserEntity.builder()
+            .name("Alice").email("alice@example.com").build();
+        when(this.userRepository.existsByEmail("alice@example.com")).thenReturn(false);
+        when(this.userRepository.save(unsavedUserEntity)).thenThrow(new DataIntegrityViolationException("unique constraint"));
 
         // Act & Assert
         assertThatThrownBy(() -> this.userService.createUser(new UserRequestDto("Alice", "alice@example.com")))

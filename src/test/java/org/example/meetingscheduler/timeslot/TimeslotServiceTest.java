@@ -48,7 +48,7 @@ class TimeslotServiceTest {
             .id(1L).organizer(userEntity).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
         final TimeslotResponseDto timeslotResponseDto = new TimeslotResponseDto(
             1L, new UserResponseDto(1L, "Alice", "alice@example.com"), start, end, SlotBookingStatus.FREE);
-        when(this.userRepository.findById(1L)).thenReturn(Optional.of(userEntity));
+        when(this.userRepository.findByIdIs(1L)).thenReturn(Optional.of(userEntity));
         when(this.timeslotRepository.save(unsaved)).thenReturn(saved);
         when(this.timeslotMapper.toDto(saved)).thenReturn(timeslotResponseDto);
 
@@ -61,8 +61,10 @@ class TimeslotServiceTest {
         // Arrange
         final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 10, 0);
         final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
+        final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
         final TimeslotEntity existing = TimeslotEntity.builder()
             .id(1L).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
+        when(this.userRepository.findByIdIs(1L)).thenReturn(Optional.of(organizer));
         when(this.timeslotRepository.findByOrganizerIdAndStartTimeAndEndTime(1L, start, end)).thenReturn(Optional.of(existing));
 
         // Act & Assert
@@ -70,6 +72,85 @@ class TimeslotServiceTest {
             .isInstanceOf(ResponseStatusException.class)
             .extracting(e -> ((ResponseStatusException) e).getStatusCode())
             .isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
+    void createTimeslot_mergesWithAdjacentTimeslot() {
+        // Arrange: existing 10:00-11:00, new 11:00-12:00 → merged 10:00-12:00
+        final LocalDateTime existingStart = LocalDateTime.of(2026, 5, 10, 10, 0);
+        final LocalDateTime existingEnd = LocalDateTime.of(2026, 5, 10, 11, 0);
+        final LocalDateTime newStart = LocalDateTime.of(2026, 5, 10, 11, 0);
+        final LocalDateTime newEnd = LocalDateTime.of(2026, 5, 10, 12, 0);
+        final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
+        final TimeslotEntity existing = TimeslotEntity.builder()
+            .id(1L).organizer(organizer).startTime(existingStart).endTime(existingEnd).status(SlotBookingStatus.FREE).build();
+        final TimeslotResponseDto expected = new TimeslotResponseDto(
+            1L, new UserResponseDto(1L, "Alice", "alice@example.com"), existingStart, newEnd, SlotBookingStatus.FREE);
+        when(this.userRepository.findByIdIs(1L)).thenReturn(Optional.of(organizer));
+        when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
+            .thenReturn(List.of(existing));
+        when(this.timeslotMapper.toDto(existing)).thenReturn(expected);
+
+        // Act
+        final TimeslotResponseDto result = this.timeslotService.createTimeslot(1L, newStart, newEnd);
+
+        // Assert
+        assertThat(result).isEqualTo(expected);
+        assertThat(existing.getStartTime()).isEqualTo(existingStart);
+        assertThat(existing.getEndTime()).isEqualTo(newEnd);
+    }
+
+    @Test
+    void createTimeslot_mergesWithOverlappingTimeslot() {
+        // Arrange: existing 10:00-11:00, new 10:30-11:30 → merged 10:00-11:30
+        final LocalDateTime existingStart = LocalDateTime.of(2026, 5, 10, 10, 0);
+        final LocalDateTime existingEnd = LocalDateTime.of(2026, 5, 10, 11, 0);
+        final LocalDateTime newStart = LocalDateTime.of(2026, 5, 10, 10, 30);
+        final LocalDateTime newEnd = LocalDateTime.of(2026, 5, 10, 11, 30);
+        final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
+        final TimeslotEntity existing = TimeslotEntity.builder()
+            .id(1L).organizer(organizer).startTime(existingStart).endTime(existingEnd).status(SlotBookingStatus.FREE).build();
+        final TimeslotResponseDto expected = new TimeslotResponseDto(
+            1L, new UserResponseDto(1L, "Alice", "alice@example.com"), existingStart, newEnd, SlotBookingStatus.FREE);
+        when(this.userRepository.findByIdIs(1L)).thenReturn(Optional.of(organizer));
+        when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
+            .thenReturn(List.of(existing));
+        when(this.timeslotMapper.toDto(existing)).thenReturn(expected);
+
+        // Act
+        final TimeslotResponseDto result = this.timeslotService.createTimeslot(1L, newStart, newEnd);
+
+        // Assert
+        assertThat(result).isEqualTo(expected);
+        assertThat(existing.getStartTime()).isEqualTo(existingStart);
+        assertThat(existing.getEndTime()).isEqualTo(newEnd);
+    }
+
+    @Test
+    void createTimeslot_mergesWithCoveringTimeslot() {
+        // Arrange: existing 10:00-11:00, new 09:00-13:00 → merged 09:00-13:00
+        final LocalDateTime existingStart = LocalDateTime.of(2026, 5, 10, 10, 0);
+        final LocalDateTime existingEnd = LocalDateTime.of(2026, 5, 10, 11, 0);
+        final LocalDateTime newStart = LocalDateTime.of(2026, 5, 10, 9, 0);
+
+        final LocalDateTime newEnd = LocalDateTime.of(2026, 5, 10, 13, 0);
+        final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
+        final TimeslotEntity existing = TimeslotEntity.builder()
+            .id(1L).organizer(organizer).startTime(existingStart).endTime(existingEnd).status(SlotBookingStatus.FREE).build();
+        final TimeslotResponseDto expected = new TimeslotResponseDto(
+            1L, new UserResponseDto(1L, "Alice", "alice@example.com"), newStart, newEnd, SlotBookingStatus.FREE);
+        when(this.userRepository.findByIdIs(1L)).thenReturn(Optional.of(organizer));
+        when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
+            .thenReturn(List.of(existing));
+        when(this.timeslotMapper.toDto(existing)).thenReturn(expected);
+
+        // Act
+        final TimeslotResponseDto result = this.timeslotService.createTimeslot(1L, newStart, newEnd);
+
+        // Assert
+        assertThat(result).isEqualTo(expected);
+        assertThat(existing.getStartTime()).isEqualTo(newStart);
+        assertThat(existing.getEndTime()).isEqualTo(newEnd);
     }
 
     @Test

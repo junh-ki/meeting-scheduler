@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.meetingscheduler.timeslot.dto.TimeslotResponseDto;
 import org.example.meetingscheduler.timeslot.dto.TimeslotUpdateRequestDto;
+import org.example.meetingscheduler.user.UserEntity;
 import org.example.meetingscheduler.user.UserRepository;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -22,10 +23,13 @@ public class TimeslotService {
     private final TimeslotRepository timeslotRepository;
     private final TimeslotMapper timeslotMapper;
 
+    @Transactional
     public TimeslotResponseDto createTimeslot(final Long userId,
                                               final LocalDateTime startTime,
                                               final LocalDateTime endTime) {
         validateStartAndEndTime(startTime, endTime);
+        final UserEntity organizer = this.userRepository.findByIdIs(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         this.timeslotRepository.findByOrganizerIdAndStartTimeAndEndTime(userId, startTime, endTime)
             .ifPresent(timeslot -> {
                 log.warn(
@@ -39,16 +43,43 @@ public class TimeslotService {
                     "Timeslot already exists for this time range"
                 );
             });
+        final List<TimeslotEntity> overlapping = this.timeslotRepository.findAll(
+            Specification.where(TimeslotSpecifications.hasOrganizerId(userId))
+                .and(TimeslotSpecifications.overlapsOrAdjacent(startTime, endTime))
+        );
+        if (!overlapping.isEmpty()) {
+            return this.timeslotMapper.toDto(
+                mergeInto(overlapping, startTime, endTime)
+            );
+        }
         return this.timeslotMapper.toDto(
             this.timeslotRepository.save(
                 TimeslotEntity.builder()
-                    .organizer(this.userRepository.findById(userId).orElseThrow())
+                    .organizer(organizer)
                     .startTime(startTime)
                     .endTime(endTime)
                     .status(SlotBookingStatus.FREE)
                     .build()
             )
         );
+    }
+
+    private TimeslotEntity mergeInto(final List<TimeslotEntity> overlappingTimeslots,
+                                     final LocalDateTime newStart,
+                                     final LocalDateTime newEnd) {
+        final LocalDateTime mergedStart = overlappingTimeslots.stream()
+            .map(TimeslotEntity::getStartTime)
+            .reduce(newStart, (a, b) -> a.isBefore(b) ? a : b);
+        final LocalDateTime mergedEnd = overlappingTimeslots.stream()
+            .map(TimeslotEntity::getEndTime)
+            .reduce(newEnd, (a, b) -> a.isAfter(b) ? a : b);
+        final TimeslotEntity primary = overlappingTimeslots.getFirst();
+        primary.setStartTime(mergedStart);
+        primary.setEndTime(mergedEnd);
+        if (overlappingTimeslots.size() > 1) {
+            this.timeslotRepository.deleteAll(overlappingTimeslots.subList(1, overlappingTimeslots.size()));
+        }
+        return primary;
     }
 
     @Transactional

@@ -27,4 +27,13 @@ public final class TimeslotSpecifications {
         return (root, criteriaQuery, criteriaBuilder) ->
             criteriaBuilder.equal(root.get("status"), slotBookingStatus);
     }
+
+    public static Specification<TimeslotEntity> overlapsOrAdjacent(final LocalDateTime startTime,
+                                                                   final LocalDateTime endTime) {
+        return (root, criteriaQuery, criteriaBuilder) ->
+            criteriaBuilder.and(
+                criteriaBuilder.lessThanOrEqualTo(root.get("startTime"), endTime),
+                criteriaBuilder.greaterThanOrEqualTo(root.get("endTime"), startTime)
+            );
+    }
 }
