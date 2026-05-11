@@ -14,6 +14,7 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -190,7 +191,7 @@ class TimeslotServiceTest {
             .id(1L).owner(userEntity).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
         final TimeslotResponseDto timeslotResponseDto = new TimeslotResponseDto(
             1L, new UserResponseDto(1L, "Alice", "alice@example.com"), start, end, SlotBookingStatus.FREE);
-        when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any())).thenReturn(List.of(timeslotEntity));
+        when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any(), any(Sort.class))).thenReturn(List.of(timeslotEntity));
         when(this.timeslotMapper.toDto(timeslotEntity)).thenReturn(timeslotResponseDto);
 
         // Act & Assert
@@ -201,7 +202,7 @@ class TimeslotServiceTest {
     @Test
     void getTimeslots_returnsEmptyList_whenNoTimeslots() {
         // Arrange
-        when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any())).thenReturn(List.of());
+        when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any(), any(Sort.class))).thenReturn(List.of());
 
         // Act & Assert
         assertThat(this.timeslotService.getTimeslots(1L, null, null, null)).isEmpty();
@@ -218,7 +219,7 @@ class TimeslotServiceTest {
             .id(2L).owner(userEntity).startTime(start).endTime(end).status(SlotBookingStatus.BOOKED).build();
         final TimeslotResponseDto timeslotResponseDto = new TimeslotResponseDto(
             2L, new UserResponseDto(1L, "Alice", "alice@example.com"), start, end, SlotBookingStatus.BOOKED);
-        when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any())).thenReturn(List.of(timeslotEntity));
+        when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any(), any(Sort.class))).thenReturn(List.of(timeslotEntity));
         when(this.timeslotMapper.toDto(timeslotEntity)).thenReturn(timeslotResponseDto);
 
         // Act & Assert

@@ -8,6 +8,7 @@ import org.example.meetingscheduler.timeslot.dto.TimeslotResponseDto;
 import org.example.meetingscheduler.timeslot.dto.TimeslotUpdateRequestDto;
 import org.example.meetingscheduler.user.UserEntity;
 import org.example.meetingscheduler.user.UserRepository;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -157,7 +158,14 @@ public class TimeslotService {
         if (slotBookingStatus != null) {
             specification = specification.and(TimeslotSpecifications.hasStatus(slotBookingStatus));
         }
-        return this.timeslotRepository.findAll(specification).stream()
+        return this.timeslotRepository
+            .findAll(
+                specification,
+                Sort.by(
+                    Sort.Order.asc("startTime"),
+                    Sort.Order.asc("endTime")
+                )
+            ).stream()
             .map(this.timeslotMapper::toDto)
             .toList();
     }
