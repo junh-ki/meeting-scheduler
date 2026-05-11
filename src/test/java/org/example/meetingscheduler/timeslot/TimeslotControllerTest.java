@@ -177,4 +177,15 @@ class TimeslotControllerTest {
         this.mockMvc.perform(delete("/timeslots/99"))
             .andExpect(status().isNotFound());
     }
+
+    @Test
+    void deleteTimeslot_returnsConflict_whenTimeslotIsBooked() throws Exception {
+        // Arrange
+        doThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Timeslot is in use by a meeting -- cancel the meeting instead"))
+            .when(this.timeslotService).deleteTimeslot(10L);
+
+        // Act & Assert
+        this.mockMvc.perform(delete("/timeslots/10"))
+            .andExpect(status().isConflict());
+    }
 }

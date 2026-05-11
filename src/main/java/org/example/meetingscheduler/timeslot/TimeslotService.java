@@ -127,8 +127,18 @@ public class TimeslotService {
 
     @Transactional
     public void deleteTimeslot(final Long id) {
-        if (!this.timeslotRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Timeslot not found");
+        final TimeslotEntity timeslotEntity = this.timeslotRepository.findById(id)
+            .orElseThrow(() ->
+                new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Timeslot not found"
+                )
+            );
+        if (SlotBookingStatus.BOOKED == timeslotEntity.getStatus()) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "Timeslot is in use by a meeting -- cancel the meeting instead"
+            );
         }
         this.timeslotRepository.deleteById(id);
     }

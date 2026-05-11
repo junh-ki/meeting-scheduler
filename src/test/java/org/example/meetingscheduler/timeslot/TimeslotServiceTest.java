@@ -306,7 +306,13 @@ class TimeslotServiceTest {
     @Test
     void deleteTimeslot_deletesTimeslot() {
         // Arrange
-        when(this.timeslotRepository.existsById(1L)).thenReturn(true);
+        final UserEntity owner = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
+        final TimeslotEntity free = TimeslotEntity.builder()
+            .id(1L).owner(owner)
+            .startTime(LocalDateTime.of(2026, 5, 10, 10, 0))
+            .endTime(LocalDateTime.of(2026, 5, 10, 11, 0))
+            .status(SlotBookingStatus.FREE).build();
+        when(this.timeslotRepository.findById(1L)).thenReturn(Optional.of(free));
 
         // Act
         this.timeslotService.deleteTimeslot(1L);
@@ -318,13 +324,32 @@ class TimeslotServiceTest {
     @Test
     void deleteTimeslot_throwsNotFound_whenTimeslotDoesNotExist() {
         // Arrange
-        when(this.timeslotRepository.existsById(99L)).thenReturn(false);
+        when(this.timeslotRepository.findById(99L)).thenReturn(Optional.empty());
 
         // Act & Assert
         assertThatThrownBy(() -> this.timeslotService.deleteTimeslot(99L))
             .isInstanceOf(ResponseStatusException.class)
             .extracting(e -> ((ResponseStatusException) e).getStatusCode())
             .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void deleteTimeslot_throwsConflict_whenTimeslotIsBooked() {
+        // Arrange
+        final UserEntity owner = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
+        final TimeslotEntity booked = TimeslotEntity.builder()
+            .id(10L).owner(owner)
+            .startTime(LocalDateTime.of(2026, 5, 10, 10, 0))
+            .endTime(LocalDateTime.of(2026, 5, 10, 11, 0))
+            .status(SlotBookingStatus.BOOKED).build();
+        when(this.timeslotRepository.findById(10L)).thenReturn(Optional.of(booked));
+
+        // Act & Assert
+        assertThatThrownBy(() -> this.timeslotService.deleteTimeslot(10L))
+            .isInstanceOf(ResponseStatusException.class)
+            .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+            .isEqualTo(HttpStatus.CONFLICT);
+        verify(this.timeslotRepository, never()).deleteById(any());
     }
 
     @Test
