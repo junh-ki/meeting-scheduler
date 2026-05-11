@@ -49,7 +49,7 @@ class TimeslotControllerTest {
                 .param("endTime", "2026-05-10T11:00:00"))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(1))
-            .andExpect(jsonPath("$.organizer.name").value("Alice"))
+            .andExpect(jsonPath("$.owner.name").value("Alice"))
             .andExpect(jsonPath("$.status").value("FREE"));
     }
 
@@ -93,7 +93,7 @@ class TimeslotControllerTest {
         this.mockMvc.perform(get("/users/1/timeslots"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].id").value(1))
-            .andExpect(jsonPath("$[0].organizer.name").value("Alice"))
+            .andExpect(jsonPath("$[0].owner.name").value("Alice"))
             .andExpect(jsonPath("$[0].status").value("FREE"));
     }
 

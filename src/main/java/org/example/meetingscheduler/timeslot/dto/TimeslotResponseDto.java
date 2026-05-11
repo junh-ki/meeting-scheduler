@@ -6,7 +6,7 @@ import org.example.meetingscheduler.user.dto.UserResponseDto;
 
 public record TimeslotResponseDto(
     Long id,
-    UserResponseDto organizer,
+    UserResponseDto owner,
     LocalDateTime startTime,
     LocalDateTime endTime,
     SlotBookingStatus status

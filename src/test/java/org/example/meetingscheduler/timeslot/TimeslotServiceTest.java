@@ -43,9 +43,9 @@ class TimeslotServiceTest {
         final UserEntity userEntity = UserEntity.builder()
             .id(1L).name("Alice").email("alice@example.com").build();
         final TimeslotEntity unsaved = TimeslotEntity.builder()
-            .organizer(userEntity).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
+            .owner(userEntity).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
         final TimeslotEntity saved = TimeslotEntity.builder()
-            .id(1L).organizer(userEntity).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
+            .id(1L).owner(userEntity).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
         final TimeslotResponseDto timeslotResponseDto = new TimeslotResponseDto(
             1L, new UserResponseDto(1L, "Alice", "alice@example.com"), start, end, SlotBookingStatus.FREE);
         when(this.userRepository.findByIdIs(1L)).thenReturn(Optional.of(userEntity));
@@ -65,7 +65,7 @@ class TimeslotServiceTest {
         final TimeslotEntity existing = TimeslotEntity.builder()
             .id(1L).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
         when(this.userRepository.findByIdIs(1L)).thenReturn(Optional.of(organizer));
-        when(this.timeslotRepository.findByOrganizerIdAndStartTimeAndEndTime(1L, start, end)).thenReturn(Optional.of(existing));
+        when(this.timeslotRepository.findByOwnerIdAndStartTimeAndEndTime(1L, start, end)).thenReturn(Optional.of(existing));
 
         // Act & Assert
         assertThatThrownBy(() -> this.timeslotService.createTimeslot(1L, start, end))
@@ -83,7 +83,7 @@ class TimeslotServiceTest {
         final LocalDateTime newEnd = LocalDateTime.of(2026, 5, 10, 12, 0);
         final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
         final TimeslotEntity existing = TimeslotEntity.builder()
-            .id(1L).organizer(organizer).startTime(existingStart).endTime(existingEnd).status(SlotBookingStatus.FREE).build();
+            .id(1L).owner(organizer).startTime(existingStart).endTime(existingEnd).status(SlotBookingStatus.FREE).build();
         final TimeslotResponseDto expected = new TimeslotResponseDto(
             1L, new UserResponseDto(1L, "Alice", "alice@example.com"), existingStart, newEnd, SlotBookingStatus.FREE);
         when(this.userRepository.findByIdIs(1L)).thenReturn(Optional.of(organizer));
@@ -109,7 +109,7 @@ class TimeslotServiceTest {
         final LocalDateTime newEnd = LocalDateTime.of(2026, 5, 10, 11, 30);
         final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
         final TimeslotEntity existing = TimeslotEntity.builder()
-            .id(1L).organizer(organizer).startTime(existingStart).endTime(existingEnd).status(SlotBookingStatus.FREE).build();
+            .id(1L).owner(organizer).startTime(existingStart).endTime(existingEnd).status(SlotBookingStatus.FREE).build();
         final TimeslotResponseDto expected = new TimeslotResponseDto(
             1L, new UserResponseDto(1L, "Alice", "alice@example.com"), existingStart, newEnd, SlotBookingStatus.FREE);
         when(this.userRepository.findByIdIs(1L)).thenReturn(Optional.of(organizer));
@@ -132,11 +132,10 @@ class TimeslotServiceTest {
         final LocalDateTime existingStart = LocalDateTime.of(2026, 5, 10, 10, 0);
         final LocalDateTime existingEnd = LocalDateTime.of(2026, 5, 10, 11, 0);
         final LocalDateTime newStart = LocalDateTime.of(2026, 5, 10, 9, 0);
-
         final LocalDateTime newEnd = LocalDateTime.of(2026, 5, 10, 13, 0);
         final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
         final TimeslotEntity existing = TimeslotEntity.builder()
-            .id(1L).organizer(organizer).startTime(existingStart).endTime(existingEnd).status(SlotBookingStatus.FREE).build();
+            .id(1L).owner(organizer).startTime(existingStart).endTime(existingEnd).status(SlotBookingStatus.FREE).build();
         final TimeslotResponseDto expected = new TimeslotResponseDto(
             1L, new UserResponseDto(1L, "Alice", "alice@example.com"), newStart, newEnd, SlotBookingStatus.FREE);
         when(this.userRepository.findByIdIs(1L)).thenReturn(Optional.of(organizer));
@@ -186,7 +185,7 @@ class TimeslotServiceTest {
         final UserEntity userEntity = UserEntity.builder()
             .id(1L).name("Alice").email("alice@example.com").build();
         final TimeslotEntity timeslotEntity = TimeslotEntity.builder()
-            .id(1L).organizer(userEntity).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
+            .id(1L).owner(userEntity).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
         final TimeslotResponseDto timeslotResponseDto = new TimeslotResponseDto(
             1L, new UserResponseDto(1L, "Alice", "alice@example.com"), start, end, SlotBookingStatus.FREE);
         when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any())).thenReturn(List.of(timeslotEntity));
@@ -214,7 +213,7 @@ class TimeslotServiceTest {
         final UserEntity userEntity = UserEntity.builder()
             .id(1L).name("Alice").email("alice@example.com").build();
         final TimeslotEntity timeslotEntity = TimeslotEntity.builder()
-            .id(2L).organizer(userEntity).startTime(start).endTime(end).status(SlotBookingStatus.BOOKED).build();
+            .id(2L).owner(userEntity).startTime(start).endTime(end).status(SlotBookingStatus.BOOKED).build();
         final TimeslotResponseDto timeslotResponseDto = new TimeslotResponseDto(
             2L, new UserResponseDto(1L, "Alice", "alice@example.com"), start, end, SlotBookingStatus.BOOKED);
         when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any())).thenReturn(List.of(timeslotEntity));
@@ -233,7 +232,8 @@ class TimeslotServiceTest {
         final UserEntity userEntity = UserEntity.builder()
             .id(1L).name("Alice").email("alice@example.com").build();
         final TimeslotEntity existing = TimeslotEntity.builder()
-            .id(1L).organizer(userEntity)
+            .id(1L)
+            .owner(userEntity)
             .startTime(LocalDateTime.of(2026, 5, 10, 9, 0))
             .endTime(LocalDateTime.of(2026, 5, 10, 10, 0))
             .status(SlotBookingStatus.FREE).build();
@@ -255,7 +255,7 @@ class TimeslotServiceTest {
         final UserEntity userEntity = UserEntity.builder()
             .id(1L).name("Alice").email("alice@example.com").build();
         final TimeslotEntity existing = TimeslotEntity.builder()
-            .id(1L).organizer(userEntity).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
+            .id(1L).owner(userEntity).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
         final TimeslotUpdateRequestDto timeslotUpdateRequestDto = new TimeslotUpdateRequestDto(null, null, SlotBookingStatus.BOOKED);
         final TimeslotResponseDto timeslotResponseDto = new TimeslotResponseDto(
             1L, new UserResponseDto(1L, "Alice", "alice@example.com"), start, end, SlotBookingStatus.BOOKED);
@@ -285,7 +285,8 @@ class TimeslotServiceTest {
         final UserEntity userEntity = UserEntity.builder()
             .id(1L).name("Alice").email("alice@example.com").build();
         final TimeslotEntity existing = TimeslotEntity.builder()
-            .id(1L).organizer(userEntity)
+            .id(1L)
+            .owner(userEntity)
             .startTime(LocalDateTime.of(2026, 5, 10, 10, 0))
             .endTime(LocalDateTime.of(2026, 5, 10, 11, 0))
             .status(SlotBookingStatus.FREE).build();

@@ -47,7 +47,7 @@ public class MeetingService {
         }
         final TimeslotEntity coveringSlot = this.timeslotRepository.findAll(
             TimeslotSpecifications
-                .hasOrganizerId(meetingCreateRequestDto.organizerId())
+                .hasOwnerId(meetingCreateRequestDto.organizerId())
                 .and(TimeslotSpecifications.hasStatus(SlotBookingStatus.FREE))
                 .and(TimeslotSpecifications.coversRange(startTime, endTime))
             ).stream()
@@ -100,7 +100,7 @@ public class MeetingService {
                 .description(meetingCreateRequestDto.description())
                 .startTime(meetingCreateRequestDto.startTime())
                 .endTime(meetingCreateRequestDto.endTime())
-                .organizer(coveringSlot.getOrganizer())
+                .organizer(coveringSlot.getOwner())
                 .participants(new ArrayList<>())
                 .build()
         );
@@ -128,7 +128,7 @@ public class MeetingService {
             timeslotEntity.setEndTime(meetingStart); // Left remainder: shrink existing slot to [slot.start, meetingStart] FREE
             this.timeslotRepository.save(
                 TimeslotEntity.builder()
-                    .organizer(timeslotEntity.getOrganizer())
+                    .owner(timeslotEntity.getOwner())
                     .startTime(meetingStart)
                     .endTime(meetingEnd)
                     .status(SlotBookingStatus.BOOKED) // BOOKED slot covering meeting range
@@ -141,7 +141,7 @@ public class MeetingService {
         if (meetingEnd.isBefore(originalEnd)) {
             this.timeslotRepository.save(
                 TimeslotEntity.builder() // Right remainder: new FREE slot for [meetingEnd, originalEnd]
-                    .organizer(timeslotEntity.getOrganizer())
+                    .owner(timeslotEntity.getOwner())
                     .startTime(meetingEnd)
                     .endTime(originalEnd)
                     .status(SlotBookingStatus.FREE)

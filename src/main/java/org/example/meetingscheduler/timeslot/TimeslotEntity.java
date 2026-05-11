@@ -32,7 +32,7 @@ public class TimeslotEntity {
 
     @JoinColumn(name = "app_user_id", nullable = false)
     @ManyToOne(fetch = FetchType.LAZY)
-    private UserEntity organizer;
+    private UserEntity owner;
 
     @Column(nullable = false)
     private LocalDateTime startTime;

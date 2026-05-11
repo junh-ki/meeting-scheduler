@@ -111,7 +111,7 @@ class MeetingServiceTest {
         final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
         final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
         final TimeslotEntity coveringSlotEntity = TimeslotEntity.builder()
-            .id(10L).organizer(organizer).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
+            .id(10L).owner(organizer).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
         when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
             .thenReturn(List.of(coveringSlotEntity));
         when(this.meetingRepository.existsByOrganizerIdAndStartTimeAndEndTime(1L, start, end)).thenReturn(true);
@@ -131,7 +131,7 @@ class MeetingServiceTest {
         final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
         final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
         final TimeslotEntity coveringSlotEntity = TimeslotEntity.builder()
-            .id(10L).organizer(organizer).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
+            .id(10L).owner(organizer).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
         when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
             .thenReturn(List.of(coveringSlotEntity));
         when(this.meetingRepository.save(any(MeetingEntity.class)))
@@ -152,7 +152,7 @@ class MeetingServiceTest {
         final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
         final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
         final TimeslotEntity coveringSlotEntity = TimeslotEntity.builder()
-            .id(10L).organizer(organizer).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
+            .id(10L).owner(organizer).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
         when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
             .thenReturn(List.of(coveringSlotEntity));
         when(this.meetingRepository.save(any(MeetingEntity.class)))
@@ -175,7 +175,7 @@ class MeetingServiceTest {
         final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
         final UserEntity participantUser = UserEntity.builder().id(2L).name("Bob").email("bob@example.com").build();
         final TimeslotEntity coveringSlotEntity = TimeslotEntity.builder()
-            .id(10L).organizer(organizer).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
+            .id(10L).owner(organizer).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
         final MeetingEntity savedMeetingEntity = MeetingEntity.builder()
             .id(100L).title("Sync").description("Weekly").startTime(start).endTime(end)
             .organizer(organizer).participants(List.of()).build();
@@ -210,7 +210,7 @@ class MeetingServiceTest {
         final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
         final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
         final TimeslotEntity coveringSlotEntity = TimeslotEntity.builder()
-            .id(10L).organizer(organizer).startTime(slotStart).endTime(end).status(SlotBookingStatus.FREE).build();
+            .id(10L).owner(organizer).startTime(slotStart).endTime(end).status(SlotBookingStatus.FREE).build();
         final MeetingEntity savedMeetingEntity = MeetingEntity.builder()
             .id(100L).title("Sync").startTime(meetingStart).endTime(end)
             .organizer(organizer).participants(List.of()).build();
@@ -242,7 +242,7 @@ class MeetingServiceTest {
         final LocalDateTime slotEnd = LocalDateTime.of(2026, 5, 10, 12, 0);
         final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
         final TimeslotEntity coveringSlotEntity = TimeslotEntity.builder()
-            .id(10L).organizer(organizer).startTime(start).endTime(slotEnd).status(SlotBookingStatus.FREE).build();
+            .id(10L).owner(organizer).startTime(start).endTime(slotEnd).status(SlotBookingStatus.FREE).build();
         final MeetingEntity savedMeeting = MeetingEntity.builder()
             .id(100L).title("Sync").startTime(start).endTime(meetingEnd)
             .organizer(organizer).participants(List.of()).build();

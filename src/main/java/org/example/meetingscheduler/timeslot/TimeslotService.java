@@ -28,9 +28,9 @@ public class TimeslotService {
                                               final LocalDateTime startTime,
                                               final LocalDateTime endTime) {
         validateStartAndEndTime(startTime, endTime);
-        final UserEntity organizer = this.userRepository.findByIdIs(userId)
+        final UserEntity owner = this.userRepository.findByIdIs(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        this.timeslotRepository.findByOrganizerIdAndStartTimeAndEndTime(userId, startTime, endTime)
+        this.timeslotRepository.findByOwnerIdAndStartTimeAndEndTime(userId, startTime, endTime)
             .ifPresent(timeslot -> {
                 log.warn(
                     "Duplicate timeslot creation rejected: userId={}, startTime={}, endTime={}",
@@ -44,7 +44,7 @@ public class TimeslotService {
                 );
             });
         final List<TimeslotEntity> overlapping = this.timeslotRepository.findAll(
-            Specification.where(TimeslotSpecifications.hasOrganizerId(userId))
+            Specification.where(TimeslotSpecifications.hasOwnerId(userId))
                 .and(TimeslotSpecifications.overlapsOrAdjacent(startTime, endTime))
         );
         if (!overlapping.isEmpty()) {
@@ -55,7 +55,7 @@ public class TimeslotService {
         return this.timeslotMapper.toDto(
             this.timeslotRepository.save(
                 TimeslotEntity.builder()
-                    .organizer(organizer)
+                    .owner(owner)
                     .startTime(startTime)
                     .endTime(endTime)
                     .status(SlotBookingStatus.FREE)
@@ -122,7 +122,7 @@ public class TimeslotService {
                                                   final LocalDateTime from,
                                                   final LocalDateTime to,
                                                   final SlotBookingStatus slotBookingStatus) {
-        Specification<TimeslotEntity> specification = Specification.where(TimeslotSpecifications.hasOrganizerId(userId));
+        Specification<TimeslotEntity> specification = Specification.where(TimeslotSpecifications.hasOwnerId(userId));
         if (from != null) {
             specification = specification.and(TimeslotSpecifications.startTimeFrom(from));
         }

@@ -8,9 +8,9 @@ import org.springframework.data.jpa.domain.Specification;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public final class TimeslotSpecifications {
 
-    public static Specification<TimeslotEntity> hasOrganizerId(final Long userId) {
+    public static Specification<TimeslotEntity> hasOwnerId(final Long userId) {
         return (root, criteriaQuery, criteriaBuilder) ->
-            criteriaBuilder.equal(root.get("organizer").get("id"), userId);
+            criteriaBuilder.equal(root.get("owner").get("id"), userId);
     }
 
     public static Specification<TimeslotEntity> startTimeFrom(final LocalDateTime from) {
