@@ -142,6 +142,8 @@ docker compose down --volumes
 |---|---|
 | Swagger UI | http://localhost:8080/swagger-ui.html |
 | OpenAPI JSON | http://localhost:8080/v3/api-docs |
+| Health | http://localhost:8080/actuator/health |
+| Metrics | http://localhost:8080/actuator/metrics |
 | Spring Boot 4 docs | https://docs.spring.io/spring-boot/index.html |
 | Spring Data JPA | https://docs.spring.io/spring-data/jpa/reference/jpa.html |
 | Flyway migrations | https://documentation.red-gate.com/flyway |
