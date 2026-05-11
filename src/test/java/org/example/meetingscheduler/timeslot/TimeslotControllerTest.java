@@ -54,6 +54,19 @@ class TimeslotControllerTest {
     }
 
     @Test
+    void createTimeslot_returnsConflict_whenTimeslotAlreadyExists() throws Exception {
+        // Arrange
+        when(this.timeslotService.createTimeslot(any(), any(), any()))
+            .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Timeslot already exists for this time range"));
+
+        // Act & Assert
+        this.mockMvc.perform(post("/users/1/timeslots")
+                .param("startTime", "2026-05-10T10:00:00")
+                .param("endTime", "2026-05-10T11:00:00"))
+            .andExpect(status().isConflict());
+    }
+
+    @Test
     void createTimeslot_returnsBadRequest_whenServiceRejectsTimeRange() throws Exception {
         // Arrange
         when(this.timeslotService.createTimeslot(any(), any(), any()))

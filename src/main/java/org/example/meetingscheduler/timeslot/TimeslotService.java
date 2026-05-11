@@ -3,6 +3,7 @@ package org.example.meetingscheduler.timeslot;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.meetingscheduler.timeslot.dto.TimeslotResponseDto;
 import org.example.meetingscheduler.timeslot.dto.TimeslotUpdateRequestDto;
 import org.example.meetingscheduler.user.UserRepository;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TimeslotService {
@@ -24,6 +26,19 @@ public class TimeslotService {
                                               final LocalDateTime startTime,
                                               final LocalDateTime endTime) {
         validateStartAndEndTime(startTime, endTime);
+        this.timeslotRepository.findByOrganizerIdAndStartTimeAndEndTime(userId, startTime, endTime)
+            .ifPresent(timeslot -> {
+                log.warn(
+                    "Duplicate timeslot creation rejected: userId={}, startTime={}, endTime={}",
+                    userId,
+                    startTime,
+                    endTime
+                );
+                throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Timeslot already exists for this time range"
+                );
+            });
         return this.timeslotMapper.toDto(
             this.timeslotRepository.save(
                 TimeslotEntity.builder()

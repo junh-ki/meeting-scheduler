@@ -57,6 +57,22 @@ class TimeslotServiceTest {
     }
 
     @Test
+    void createTimeslot_throwsConflict_whenDuplicateExists() {
+        // Arrange
+        final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 10, 0);
+        final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
+        final TimeslotEntity existing = TimeslotEntity.builder()
+            .id(1L).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
+        when(this.timeslotRepository.findByOrganizerIdAndStartTimeAndEndTime(1L, start, end)).thenReturn(Optional.of(existing));
+
+        // Act & Assert
+        assertThatThrownBy(() -> this.timeslotService.createTimeslot(1L, start, end))
+            .isInstanceOf(ResponseStatusException.class)
+            .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+            .isEqualTo(HttpStatus.CONFLICT);
+    }
+
+    @Test
     void createTimeslot_throwsBadRequest_whenEndTimeEqualsStartTime() {
         // Arrange
         final LocalDateTime time = LocalDateTime.of(2026, 5, 10, 10, 0);
