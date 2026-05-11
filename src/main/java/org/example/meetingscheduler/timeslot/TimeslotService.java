@@ -64,6 +64,21 @@ public class TimeslotService {
         );
     }
 
+    public void mergeAdjacentFreeSlots(final Long userId,
+                                       final LocalDateTime start,
+                                       final LocalDateTime end) {
+        final List<TimeslotEntity> adjacentTimeslots = this.timeslotRepository.findAll(
+            Specification.where(
+                TimeslotSpecifications
+                    .hasOwnerId(userId))
+                    .and(TimeslotSpecifications.hasStatus(SlotBookingStatus.FREE))
+                    .and(TimeslotSpecifications.overlapsOrAdjacent(start, end))
+        );
+        if (adjacentTimeslots.size() > 1) {
+            mergeInto(adjacentTimeslots, start, end);
+        }
+    }
+
     private TimeslotEntity mergeInto(final List<TimeslotEntity> overlappingTimeslots,
                                      final LocalDateTime newStart,
                                      final LocalDateTime newEnd) {

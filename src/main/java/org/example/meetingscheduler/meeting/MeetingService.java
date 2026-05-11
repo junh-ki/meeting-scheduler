@@ -12,6 +12,7 @@ import org.example.meetingscheduler.participant.ParticipantRepository;
 import org.example.meetingscheduler.timeslot.SlotBookingStatus;
 import org.example.meetingscheduler.timeslot.TimeslotEntity;
 import org.example.meetingscheduler.timeslot.TimeslotRepository;
+import org.example.meetingscheduler.timeslot.TimeslotService;
 import org.example.meetingscheduler.timeslot.TimeslotSpecifications;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -28,6 +29,7 @@ public class MeetingService {
     private final MeetingRepository meetingRepository;
     private final MeetingMapper meetingMapper;
     private final TimeslotRepository timeslotRepository;
+    private final TimeslotService timeslotService;
     private final ParticipantRepository participantRepository;
 
     public List<MeetingResponseDto> getMeetings() {
@@ -138,6 +140,46 @@ public class MeetingService {
             .toList();
         meetingEntity.setParticipants(this.participantRepository.saveAll(participants));
         return meetingEntity;
+    }
+
+    @Transactional
+    public void deleteMeeting(final Long id) {
+        final MeetingEntity meetingEntity = this.meetingRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Meeting not found"));
+        final LocalDateTime startTime = meetingEntity.getStartTime();
+        final LocalDateTime endTime = meetingEntity.getEndTime();
+        restoreTimeslot(
+            meetingEntity.getOrganizer().getId(),
+            startTime,
+            endTime
+        );
+        meetingEntity.getParticipants()
+            .forEach(participantEntity ->
+                restoreTimeslot(
+                    participantEntity.getUser().getId(),
+                    startTime,
+                    endTime
+                )
+            );
+        this.meetingRepository.delete(meetingEntity);
+    }
+
+    private void restoreTimeslot(final Long userId,
+                                 final LocalDateTime meetingStart,
+                                 final LocalDateTime meetingEnd) {
+        this.timeslotRepository.findByOwnerIdAndStartTimeAndEndTimeAndStatus(userId, meetingStart, meetingEnd, SlotBookingStatus.BOOKED)
+            .ifPresentOrElse(
+                timeslotEntity -> {
+                    timeslotEntity.setStatus(SlotBookingStatus.FREE);
+                    this.timeslotService.mergeAdjacentFreeSlots(userId, meetingStart, meetingEnd);
+                },
+                () -> log.warn(
+                    "No BOOKED timeslot found for userId={}, start={}, end={} -- skipping restore",
+                    userId,
+                    meetingStart,
+                    meetingEnd
+                )
+            );
     }
 
     private void mutateTimeslot(final TimeslotEntity timeslotEntity,

@@ -3,6 +3,7 @@ package org.example.meetingscheduler.meeting;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import org.example.meetingscheduler.meeting.dto.MeetingCreateRequestDto;
 import org.example.meetingscheduler.meeting.dto.MeetingResponseDto;
 import org.example.meetingscheduler.participant.ParticipantEntity;
@@ -11,6 +12,7 @@ import org.example.meetingscheduler.participant.ParticipantResponseDto;
 import org.example.meetingscheduler.timeslot.SlotBookingStatus;
 import org.example.meetingscheduler.timeslot.TimeslotEntity;
 import org.example.meetingscheduler.timeslot.TimeslotRepository;
+import org.example.meetingscheduler.timeslot.TimeslotService;
 import org.example.meetingscheduler.user.UserEntity;
 import org.example.meetingscheduler.user.dto.UserResponseDto;
 import org.junit.jupiter.api.Test;
@@ -28,6 +30,9 @@ import org.springframework.web.server.ResponseStatusException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,6 +46,8 @@ class MeetingServiceTest {
     private MeetingMapper meetingMapper;
     @Mock
     private TimeslotRepository timeslotRepository;
+    @Mock
+    private TimeslotService timeslotService;
     @Mock
     private ParticipantRepository participantRepository;
 
@@ -228,6 +235,103 @@ class MeetingServiceTest {
         assertThat(meetingResponseDto).isEqualTo(expected);
         assertThat(organizerSlot.getEndTime()).isEqualTo(meetingStart); // existing slot shrunk to left remainder
         assertThat(organizerSlot.getStatus()).isEqualTo(SlotBookingStatus.FREE);
+    }
+
+    @Test
+    void deleteMeeting_throwsNotFound_whenMeetingDoesNotExist() {
+        // Arrange
+        when(this.meetingRepository.findById(99L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> this.meetingService.deleteMeeting(99L))
+            .isInstanceOf(ResponseStatusException.class)
+            .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
+            .isEqualTo(HttpStatus.NOT_FOUND);
+        verify(this.timeslotRepository, never()).findByOwnerIdAndStartTimeAndEndTimeAndStatus(any(), any(), any(), any());
+    }
+
+    @Test
+    void deleteMeeting_restoresExactFitSlot_andDelegatesMerge() {
+        // Arrange — BOOKED slot matches meeting range exactly
+        final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 10, 0);
+        final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
+        final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
+        final TimeslotEntity bookedSlot = TimeslotEntity.builder()
+            .id(10L).owner(organizer).startTime(start).endTime(end).status(SlotBookingStatus.BOOKED).build();
+        final MeetingEntity meeting = MeetingEntity.builder()
+            .id(100L).title("Sync").startTime(start).endTime(end)
+            .organizer(organizer).participants(List.of()).build();
+        when(this.meetingRepository.findById(100L)).thenReturn(Optional.of(meeting));
+        when(this.timeslotRepository.findByOwnerIdAndStartTimeAndEndTimeAndStatus(
+            eq(1L), eq(start), eq(end), eq(SlotBookingStatus.BOOKED)))
+            .thenReturn(Optional.of(bookedSlot));
+
+        // Act
+        this.meetingService.deleteMeeting(100L);
+
+        // Assert
+        assertThat(bookedSlot.getStatus()).isEqualTo(SlotBookingStatus.FREE);
+        verify(this.timeslotService).mergeAdjacentFreeSlots(1L, start, end);
+        verify(this.meetingRepository).delete(meeting);
+    }
+
+    @Test
+    void deleteMeeting_restoresSlot_andDelegatesMergeToTimeslotService() {
+        // Arrange — BOOKED [10:00,11:00] with adjacent FREE slots; merge is delegated to TimeslotService
+        final LocalDateTime meetingStart = LocalDateTime.of(2026, 5, 10, 10, 0);
+        final LocalDateTime meetingEnd = LocalDateTime.of(2026, 5, 10, 11, 0);
+        final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
+        final TimeslotEntity bookedSlot = TimeslotEntity.builder()
+            .id(10L).owner(organizer).startTime(meetingStart).endTime(meetingEnd).status(SlotBookingStatus.BOOKED).build();
+        final MeetingEntity meeting = MeetingEntity.builder()
+            .id(100L).title("Sync").startTime(meetingStart).endTime(meetingEnd)
+            .organizer(organizer).participants(List.of()).build();
+        when(this.meetingRepository.findById(100L)).thenReturn(Optional.of(meeting));
+        when(this.timeslotRepository.findByOwnerIdAndStartTimeAndEndTimeAndStatus(
+            eq(1L), eq(meetingStart), eq(meetingEnd), eq(SlotBookingStatus.BOOKED)))
+            .thenReturn(Optional.of(bookedSlot));
+
+        // Act
+        this.meetingService.deleteMeeting(100L);
+
+        // Assert
+        assertThat(bookedSlot.getStatus()).isEqualTo(SlotBookingStatus.FREE);
+        verify(this.timeslotService).mergeAdjacentFreeSlots(1L, meetingStart, meetingEnd);
+        verify(this.meetingRepository).delete(meeting);
+    }
+
+    @Test
+    void deleteMeeting_restoresTimeslots_forOrganizerAndParticipants() {
+        // Arrange — both organizer and participant have BOOKED slots; both get restored and merge-delegated
+        final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 10, 0);
+        final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
+        final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
+        final UserEntity participantUser = UserEntity.builder().id(2L).name("Bob").email("bob@example.com").build();
+        final TimeslotEntity organizerSlot = TimeslotEntity.builder()
+            .id(10L).owner(organizer).startTime(start).endTime(end).status(SlotBookingStatus.BOOKED).build();
+        final TimeslotEntity participantSlot = TimeslotEntity.builder()
+            .id(20L).owner(participantUser).startTime(start).endTime(end).status(SlotBookingStatus.BOOKED).build();
+        final ParticipantEntity participant = ParticipantEntity.builder().id(1L).user(participantUser).build();
+        final MeetingEntity meeting = MeetingEntity.builder()
+            .id(100L).title("Sync").startTime(start).endTime(end)
+            .organizer(organizer).participants(List.of(participant)).build();
+        when(this.meetingRepository.findById(100L)).thenReturn(Optional.of(meeting));
+        when(this.timeslotRepository.findByOwnerIdAndStartTimeAndEndTimeAndStatus(
+            eq(1L), eq(start), eq(end), eq(SlotBookingStatus.BOOKED)))
+            .thenReturn(Optional.of(organizerSlot));
+        when(this.timeslotRepository.findByOwnerIdAndStartTimeAndEndTimeAndStatus(
+            eq(2L), eq(start), eq(end), eq(SlotBookingStatus.BOOKED)))
+            .thenReturn(Optional.of(participantSlot));
+
+        // Act
+        this.meetingService.deleteMeeting(100L);
+
+        // Assert
+        assertThat(organizerSlot.getStatus()).isEqualTo(SlotBookingStatus.FREE);
+        assertThat(participantSlot.getStatus()).isEqualTo(SlotBookingStatus.FREE);
+        verify(this.timeslotService).mergeAdjacentFreeSlots(1L, start, end);
+        verify(this.timeslotService).mergeAdjacentFreeSlots(2L, start, end);
+        verify(this.meetingRepository).delete(meeting);
     }
 
     @Test

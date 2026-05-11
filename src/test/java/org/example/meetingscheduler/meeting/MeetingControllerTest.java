@@ -18,7 +18,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -161,6 +164,27 @@ class MeetingControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(VALID_BODY))
             .andExpect(status().is(422));
+    }
+
+    @Test
+    void deleteMeeting_returnsNoContent_whenMeetingExists() throws Exception {
+        // Arrange
+        doNothing().when(this.meetingService).deleteMeeting(1L);
+
+        // Act & Assert
+        this.mockMvc.perform(delete("/meetings/1"))
+            .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void deleteMeeting_returnsNotFound_whenMeetingDoesNotExist() throws Exception {
+        // Arrange
+        doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Meeting not found"))
+            .when(this.meetingService).deleteMeeting(99L);
+
+        // Act & Assert
+        this.mockMvc.perform(delete("/meetings/99"))
+            .andExpect(status().isNotFound());
     }
 
     @Test

@@ -10,4 +10,9 @@ public interface TimeslotRepository extends JpaRepository<TimeslotEntity, Long>,
     Optional<TimeslotEntity> findByOwnerIdAndStartTimeAndEndTime(final Long ownerId,
                                                                  final LocalDateTime startTime,
                                                                  final LocalDateTime endTime);
+
+    Optional<TimeslotEntity> findByOwnerIdAndStartTimeAndEndTimeAndStatus(final Long ownerId,
+                                                                          final LocalDateTime startTime,
+                                                                          final LocalDateTime endTime,
+                                                                          final SlotBookingStatus status);
 }

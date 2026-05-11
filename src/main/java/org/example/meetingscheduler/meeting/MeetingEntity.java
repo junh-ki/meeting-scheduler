@@ -1,5 +1,6 @@
 package org.example.meetingscheduler.meeting;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -46,6 +47,6 @@ public class MeetingEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     private UserEntity organizer;
 
-    @OneToMany(mappedBy = "meeting", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "meeting", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ParticipantEntity> participants;
 }

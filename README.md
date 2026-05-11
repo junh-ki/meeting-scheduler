@@ -1,6 +1,6 @@
 # TODO
 
-1. Timeslot mutation (merging timeslots again upon meeting deletion)
+1. Orphaned Meeting when deleting timeslot
 2. Get timeslot by status (sort by start and endtime - ascending)
 3. Get meetings by user (sort by start and endtime - ascending)
 4. Nested Unit-tests

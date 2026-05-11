@@ -20,6 +20,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -323,5 +325,47 @@ class TimeslotServiceTest {
             .isInstanceOf(ResponseStatusException.class)
             .extracting(e -> ((ResponseStatusException) e).getStatusCode())
             .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void mergeAdjacentFreeSlots_doesNothing_whenOnlyOneAdjacentSlot() {
+        // Arrange — only the restored BOOKED slot itself is returned; nothing to merge
+        final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 10, 0);
+        final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
+        final UserEntity owner = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
+        final TimeslotEntity onlySlot = TimeslotEntity.builder()
+            .id(10L).owner(owner).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
+        when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
+            .thenReturn(List.of(onlySlot));
+
+        // Act
+        this.timeslotService.mergeAdjacentFreeSlots(1L, start, end);
+
+        // Assert — no deleteAll call; the single slot is left unchanged
+        verify(this.timeslotRepository, never()).deleteAll(any());
+    }
+
+    @Test
+    void mergeAdjacentFreeSlots_mergesAllAdjacentSlots_intoFirstSlot() {
+        // Arrange — three adjacent FREE slots: [09:00,10:00] + [10:00,11:00] + [11:00,12:00]
+        final LocalDateTime around = LocalDateTime.of(2026, 5, 10, 10, 0);
+        final LocalDateTime until = LocalDateTime.of(2026, 5, 10, 11, 0);
+        final UserEntity owner = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
+        final TimeslotEntity left = TimeslotEntity.builder()
+            .id(11L).owner(owner).startTime(LocalDateTime.of(2026, 5, 10, 9, 0)).endTime(around).status(SlotBookingStatus.FREE).build();
+        final TimeslotEntity middle = TimeslotEntity.builder()
+            .id(10L).owner(owner).startTime(around).endTime(until).status(SlotBookingStatus.FREE).build();
+        final TimeslotEntity right = TimeslotEntity.builder()
+            .id(12L).owner(owner).startTime(until).endTime(LocalDateTime.of(2026, 5, 10, 12, 0)).status(SlotBookingStatus.FREE).build();
+        when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
+            .thenReturn(List.of(left, middle, right));
+
+        // Act
+        this.timeslotService.mergeAdjacentFreeSlots(1L, around, until);
+
+        // Assert — first slot expanded to full range; the other two deleted
+        assertThat(left.getStartTime()).isEqualTo(LocalDateTime.of(2026, 5, 10, 9, 0));
+        assertThat(left.getEndTime()).isEqualTo(LocalDateTime.of(2026, 5, 10, 12, 0));
+        verify(this.timeslotRepository).deleteAll(List.of(middle, right));
     }
 }
