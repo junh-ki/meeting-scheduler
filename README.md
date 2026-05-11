@@ -1,11 +1,6 @@
 # TODO
 
-1. Orphaned Meeting when deleting timeslot
-2. Get timeslot by status (sort by start and endtime - ascending)
-3. Get meetings by user (sort by start and endtime - ascending)
-4. Nested Unit-tests
-5. DB indexing for better performance
-6. Postman collection
+1. Postman collection
 
 ---
 
@@ -21,7 +16,7 @@ The project follows a standard layered architecture inside a single Spring Boot 
 meeting-scheduler/
 ├── user/           # User registration and lookup
 ├── timeslot/       # Availability management (CRUD + overlap/merge logic)
-├── meeting/        # Meeting creation and listing
+├── meeting/        # Meeting creation, deletion, and listing
 └── participant/    # Join entity linking meetings to attendees
 ```
 
@@ -98,6 +93,10 @@ Meeting:          10:00 ──────── 11:00
 After:   [09:00 ── 10:00] FREE  +  [10:00 ──────── 11:00] BOOKED  +  [11:00 ──── 12:00] FREE
 ```
 
+### Meeting Deletion with Timeslot Restoration
+
+Cancelling a meeting (`DELETE /meetings/{id}`) restores every party's `BOOKED` timeslot back to `FREE` — for the organizer and all participants. After the status is reset, adjacent `FREE` slots around the restored slot are automatically merged, so the user's availability is left in the same contiguous state as before the meeting was booked.
+
 ### Duplicate and Conflict Protection
 
 | Scenario | Response |
@@ -105,6 +104,7 @@ After:   [09:00 ── 10:00] FREE  +  [10:00 ──────── 11:00] BO
 | Timeslot with the same organizer, start, and end already exists | `409 Conflict` |
 | User with the same email already exists | `409 Conflict` |
 | Meeting with the same organizer and time range already exists | `409 Conflict` |
+| Deleting a `BOOKED` timeslot directly (must cancel the meeting instead) | `409 Conflict` |
 | Organizer has no FREE slot covering the requested range | `422 Unprocessable Entity` |
 | Any participant has no FREE slot covering the requested range | `422 Unprocessable Entity` |
 

@@ -65,6 +65,9 @@ public class TimeslotService {
         );
     }
 
+    /**
+     * Called by MeetingService after restoring a timeslot to FREE on meeting deletion
+     */
     public void mergeAdjacentFreeSlots(final Long userId,
                                        final LocalDateTime start,
                                        final LocalDateTime end) {
@@ -80,6 +83,9 @@ public class TimeslotService {
         }
     }
 
+    /**
+     * newStart/newEnd are used as seeds so the new range is always included in the merged bounds
+     */
     private TimeslotEntity mergeInto(final List<TimeslotEntity> overlappingTimeslots,
                                      final LocalDateTime newStart,
                                      final LocalDateTime newEnd) {

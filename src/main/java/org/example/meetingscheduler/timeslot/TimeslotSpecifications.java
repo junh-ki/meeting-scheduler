@@ -28,6 +28,9 @@ public final class TimeslotSpecifications {
             criteriaBuilder.equal(root.get("status"), slotBookingStatus);
     }
 
+    /**
+     * slot.startTime <= rangeEnd AND slot.endTime >= rangeStart
+     */
     public static Specification<TimeslotEntity> overlapsOrAdjacent(final LocalDateTime startTime,
                                                                    final LocalDateTime endTime) {
         return (root, criteriaQuery, criteriaBuilder) ->
@@ -37,6 +40,9 @@ public final class TimeslotSpecifications {
             );
     }
 
+    /**
+     * slot.startTime <= rangeStart AND slot.endTime >= rangeEnd
+     */
     public static Specification<TimeslotEntity> coversRange(final LocalDateTime startTime,
                                                             final LocalDateTime endTime) {
         return (root, criteriaQuery, criteriaBuilder) ->
