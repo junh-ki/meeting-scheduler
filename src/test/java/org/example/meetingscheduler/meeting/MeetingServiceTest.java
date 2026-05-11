@@ -3,7 +3,6 @@ package org.example.meetingscheduler.meeting;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import org.example.meetingscheduler.meeting.dto.MeetingCreateRequestDto;
 import org.example.meetingscheduler.meeting.dto.MeetingResponseDto;
 import org.example.meetingscheduler.participant.ParticipantEntity;
@@ -13,7 +12,6 @@ import org.example.meetingscheduler.timeslot.SlotBookingStatus;
 import org.example.meetingscheduler.timeslot.TimeslotEntity;
 import org.example.meetingscheduler.timeslot.TimeslotRepository;
 import org.example.meetingscheduler.user.UserEntity;
-import org.example.meetingscheduler.user.UserRepository;
 import org.example.meetingscheduler.user.dto.UserResponseDto;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,8 +41,6 @@ class MeetingServiceTest {
     private MeetingMapper meetingMapper;
     @Mock
     private TimeslotRepository timeslotRepository;
-    @Mock
-    private UserRepository userRepository;
     @Mock
     private ParticipantRepository participantRepository;
 
@@ -89,7 +85,7 @@ class MeetingServiceTest {
     }
 
     @Test
-    void createMeeting_throwsUnprocessableEntity_whenNoAvailabilityCoversRange() {
+    void createMeeting_throwsUnprocessableEntity_whenOrganizerHasNoAvailability() {
         // Arrange
         final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 10, 0);
         final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
@@ -105,15 +101,35 @@ class MeetingServiceTest {
     }
 
     @Test
+    void createMeeting_throwsUnprocessableEntity_whenParticipantHasNoAvailability() {
+        // Arrange
+        final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 10, 0);
+        final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
+        final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
+        final TimeslotEntity organizerSlot = TimeslotEntity.builder()
+            .id(10L).owner(organizer).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
+        when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
+            .thenReturn(List.of(organizerSlot))  // organizer has availability
+            .thenReturn(List.of()); // participant has no availability
+        final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto(1L, "Sync", null, start, end, List.of(99L));
+
+        // Act & Assert
+        assertThatThrownBy(() -> this.meetingService.createMeeting(meetingCreateRequestDto))
+            .isInstanceOf(ResponseStatusException.class)
+            .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
+            .isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
+    }
+
+    @Test
     void createMeeting_throwsConflict_whenMeetingAlreadyExists() {
         // Arrange
         final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 10, 0);
         final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
         final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
-        final TimeslotEntity coveringSlotEntity = TimeslotEntity.builder()
+        final TimeslotEntity organizerSlot = TimeslotEntity.builder()
             .id(10L).owner(organizer).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
         when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
-            .thenReturn(List.of(coveringSlotEntity));
+            .thenReturn(List.of(organizerSlot));
         when(this.meetingRepository.existsByOrganizerIdAndStartTimeAndEndTime(1L, start, end)).thenReturn(true);
         final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto(1L, "Sync", null, start, end, List.of());
 
@@ -130,10 +146,10 @@ class MeetingServiceTest {
         final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 10, 0);
         final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
         final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
-        final TimeslotEntity coveringSlotEntity = TimeslotEntity.builder()
+        final TimeslotEntity organizerSlot = TimeslotEntity.builder()
             .id(10L).owner(organizer).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
         when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
-            .thenReturn(List.of(coveringSlotEntity));
+            .thenReturn(List.of(organizerSlot));
         when(this.meetingRepository.save(any(MeetingEntity.class)))
             .thenThrow(new DataIntegrityViolationException("unique constraint"));
         final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto(1L, "Sync", null, start, end, List.of());
@@ -146,36 +162,16 @@ class MeetingServiceTest {
     }
 
     @Test
-    void createMeeting_throwsNotFound_whenParticipantUserDoesNotExist() {
-        // Arrange
-        final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 10, 0);
-        final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
-        final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
-        final TimeslotEntity coveringSlotEntity = TimeslotEntity.builder()
-            .id(10L).owner(organizer).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
-        when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
-            .thenReturn(List.of(coveringSlotEntity));
-        when(this.meetingRepository.save(any(MeetingEntity.class)))
-            .thenReturn(MeetingEntity.builder().id(100L).participants(List.of()).build());
-        when(this.userRepository.findById(99L)).thenReturn(Optional.empty());
-        final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto(1L, "Sync", null, start, end, List.of(99L));
-
-        // Act & Assert
-        assertThatThrownBy(() -> this.meetingService.createMeeting(meetingCreateRequestDto))
-            .isInstanceOf(ResponseStatusException.class)
-            .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
-            .isEqualTo(HttpStatus.NOT_FOUND);
-    }
-
-    @Test
     void createMeeting_createsMeetingAndParticipants_andSplitsTimeslotExactFit() {
-        // Arrange — covering slot matches meeting range exactly → repurposed as BOOKED, no remainders
+        // Arrange — covering slot matches meeting range exactly for both organizer and participant
         final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 10, 0);
         final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
         final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
         final UserEntity participantUser = UserEntity.builder().id(2L).name("Bob").email("bob@example.com").build();
-        final TimeslotEntity coveringSlotEntity = TimeslotEntity.builder()
+        final TimeslotEntity organizerSlot = TimeslotEntity.builder()
             .id(10L).owner(organizer).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
+        final TimeslotEntity participantSlot = TimeslotEntity.builder()
+            .id(20L).owner(participantUser).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
         final MeetingEntity savedMeetingEntity = MeetingEntity.builder()
             .id(100L).title("Sync").description("Weekly").startTime(start).endTime(end)
             .organizer(organizer).participants(List.of()).build();
@@ -186,9 +182,9 @@ class MeetingServiceTest {
             new UserResponseDto(1L, "Alice", "alice@example.com"),
             List.of(new ParticipantResponseDto(1L, new UserResponseDto(2L, "Bob", "bob@example.com"))));
         when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
-            .thenReturn(List.of(coveringSlotEntity));
+            .thenReturn(List.of(organizerSlot))
+            .thenReturn(List.of(participantSlot));
         when(this.meetingRepository.save(any(MeetingEntity.class))).thenReturn(savedMeetingEntity);
-        when(this.userRepository.findById(2L)).thenReturn(Optional.of(participantUser));
         when(this.participantRepository.saveAll(any())).thenReturn(List.of(savedParticipantEntity));
         when(this.meetingMapper.toDto(savedMeetingEntity)).thenReturn(expected);
         final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto(1L, "Sync", "Weekly", start, end, List.of(2L));
@@ -198,18 +194,18 @@ class MeetingServiceTest {
 
         // Assert
         assertThat(meetingResponseDto).isEqualTo(expected);
-        assertThat(coveringSlotEntity.getStatus()).isEqualTo(SlotBookingStatus.BOOKED);
-        assertThat(coveringSlotEntity.getEndTime()).isEqualTo(end);
+        assertThat(organizerSlot.getStatus()).isEqualTo(SlotBookingStatus.BOOKED);
+        assertThat(participantSlot.getStatus()).isEqualTo(SlotBookingStatus.BOOKED);
     }
 
     @Test
     void createMeeting_splitsTimeslot_whenMeetingStartsAfterSlotStart() {
-        // Arrange — slot 09:00-11:00, meeting 10:00-11:00 → left remainder [09:00,10:00] FREE, existing → BOOKED [10:00,11:00]
+        // Arrange — slot 09:00-11:00, meeting 10:00-11:00 → left remainder [09:00,10:00] FREE + BOOKED [10:00,11:00]
         final LocalDateTime slotStart = LocalDateTime.of(2026, 5, 10, 9, 0);
         final LocalDateTime meetingStart = LocalDateTime.of(2026, 5, 10, 10, 0);
         final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
         final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
-        final TimeslotEntity coveringSlotEntity = TimeslotEntity.builder()
+        final TimeslotEntity organizerSlot = TimeslotEntity.builder()
             .id(10L).owner(organizer).startTime(slotStart).endTime(end).status(SlotBookingStatus.FREE).build();
         final MeetingEntity savedMeetingEntity = MeetingEntity.builder()
             .id(100L).title("Sync").startTime(meetingStart).endTime(end)
@@ -218,7 +214,7 @@ class MeetingServiceTest {
             100L, "Sync", null, meetingStart, end,
             new UserResponseDto(1L, "Alice", "alice@example.com"), List.of());
         when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
-            .thenReturn(List.of(coveringSlotEntity));
+            .thenReturn(List.of(organizerSlot));
         when(this.timeslotRepository.save(any(TimeslotEntity.class))).thenReturn(TimeslotEntity.builder().build());
         when(this.meetingRepository.save(any(MeetingEntity.class))).thenReturn(savedMeetingEntity);
         when(this.participantRepository.saveAll(any())).thenReturn(List.of());
@@ -230,18 +226,18 @@ class MeetingServiceTest {
 
         // Assert
         assertThat(meetingResponseDto).isEqualTo(expected);
-        assertThat(coveringSlotEntity.getEndTime()).isEqualTo(meetingStart); // existing slot shrunk to left remainder
-        assertThat(coveringSlotEntity.getStatus()).isEqualTo(SlotBookingStatus.FREE);
+        assertThat(organizerSlot.getEndTime()).isEqualTo(meetingStart); // existing slot shrunk to left remainder
+        assertThat(organizerSlot.getStatus()).isEqualTo(SlotBookingStatus.FREE);
     }
 
     @Test
     void createMeeting_splitsTimeslot_whenMeetingEndsBeforeSlotEnd() {
-        // Arrange — slot 10:00-12:00, meeting 10:00-11:00 → existing → BOOKED [10:00,11:00], right remainder [11:00,12:00] FREE
+        // Arrange — slot 10:00-12:00, meeting 10:00-11:00 → BOOKED [10:00,11:00] + right remainder [11:00,12:00] FREE
         final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 10, 0);
         final LocalDateTime meetingEnd = LocalDateTime.of(2026, 5, 10, 11, 0);
         final LocalDateTime slotEnd = LocalDateTime.of(2026, 5, 10, 12, 0);
         final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
-        final TimeslotEntity coveringSlotEntity = TimeslotEntity.builder()
+        final TimeslotEntity organizerSlot = TimeslotEntity.builder()
             .id(10L).owner(organizer).startTime(start).endTime(slotEnd).status(SlotBookingStatus.FREE).build();
         final MeetingEntity savedMeeting = MeetingEntity.builder()
             .id(100L).title("Sync").startTime(start).endTime(meetingEnd)
@@ -250,7 +246,7 @@ class MeetingServiceTest {
             100L, "Sync", null, start, meetingEnd,
             new UserResponseDto(1L, "Alice", "alice@example.com"), List.of());
         when(this.timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
-            .thenReturn(List.of(coveringSlotEntity));
+            .thenReturn(List.of(organizerSlot));
         when(this.timeslotRepository.save(any(TimeslotEntity.class))).thenReturn(TimeslotEntity.builder().build());
         when(this.meetingRepository.save(any(MeetingEntity.class))).thenReturn(savedMeeting);
         when(this.participantRepository.saveAll(any())).thenReturn(List.of());
@@ -262,7 +258,7 @@ class MeetingServiceTest {
 
         // Assert
         assertThat(meetingResponseDto).isEqualTo(expected);
-        assertThat(coveringSlotEntity.getStatus()).isEqualTo(SlotBookingStatus.BOOKED);
-        assertThat(coveringSlotEntity.getEndTime()).isEqualTo(meetingEnd);
+        assertThat(organizerSlot.getStatus()).isEqualTo(SlotBookingStatus.BOOKED);
+        assertThat(organizerSlot.getEndTime()).isEqualTo(meetingEnd);
     }
 }

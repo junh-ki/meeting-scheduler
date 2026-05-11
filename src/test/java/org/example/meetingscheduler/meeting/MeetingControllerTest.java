@@ -151,16 +151,16 @@ class MeetingControllerTest {
     }
 
     @Test
-    void createMeeting_returnsNotFound_whenParticipantUserDoesNotExist() throws Exception {
+    void createMeeting_returnsUnprocessableEntity_whenParticipantHasNoAvailability() throws Exception {
         // Arrange
         when(this.meetingService.createMeeting(any(MeetingCreateRequestDto.class)))
-            .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: 99"));
+            .thenThrow(new ResponseStatusException(HttpStatusCode.valueOf(422), "No available timeslot for participant: 2"));
 
         // Act & Assert
         this.mockMvc.perform(post("/meetings")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(VALID_BODY))
-            .andExpect(status().isNotFound());
+            .andExpect(status().is(422));
     }
 
     @Test

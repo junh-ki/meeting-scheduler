@@ -61,7 +61,8 @@ An organizer publishes availability as a timeslot with a `FREE` or `BOOKED` stat
 
 ### Meeting Creation with Timeslot Mutation
 
-A meeting is booked by specifying the organizer ID, desired start time, and end time. The service finds a `FREE` slot that fully covers the requested range and splits it.
+A meeting is booked by specifying the organizer ID, desired start time, and end time. 
+Before the meeting is created, **every party must have a `FREE` timeslot that fully covers the requested range** — the organizer and each participant. If any party has no covering slot the request is rejected with `422 Unprocessable Entity`. When all slots are confirmed, each covering slot is split in exactly the same way.
 
 **Split cases:**
 
@@ -104,7 +105,8 @@ After:   [09:00 ── 10:00] FREE  +  [10:00 ──────── 11:00] BO
 | Timeslot with the same organizer, start, and end already exists | `409 Conflict` |
 | User with the same email already exists | `409 Conflict` |
 | Meeting with the same organizer and time range already exists | `409 Conflict` |
-| No FREE slot covers the requested meeting range | `422 Unprocessable Entity` |
+| Organizer has no FREE slot covering the requested range | `422 Unprocessable Entity` |
+| Any participant has no FREE slot covering the requested range | `422 Unprocessable Entity` |
 
 Pessimistic write locking (`SELECT FOR UPDATE`) on the organizer row serializes concurrent timeslot creation per user. A `UNIQUE` constraint on each table acts as the final safety net for concurrent requests that pass the application-level check simultaneously.
 

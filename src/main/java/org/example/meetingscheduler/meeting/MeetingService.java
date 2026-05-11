@@ -13,7 +13,6 @@ import org.example.meetingscheduler.timeslot.SlotBookingStatus;
 import org.example.meetingscheduler.timeslot.TimeslotEntity;
 import org.example.meetingscheduler.timeslot.TimeslotRepository;
 import org.example.meetingscheduler.timeslot.TimeslotSpecifications;
-import org.example.meetingscheduler.user.UserRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -29,7 +28,6 @@ public class MeetingService {
     private final MeetingRepository meetingRepository;
     private final MeetingMapper meetingMapper;
     private final TimeslotRepository timeslotRepository;
-    private final UserRepository userRepository;
     private final ParticipantRepository participantRepository;
 
     public List<MeetingResponseDto> getMeetings() {
@@ -45,16 +43,12 @@ public class MeetingService {
         if (!endTime.isAfter(startTime)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "endTime must be after startTime");
         }
-        final TimeslotEntity coveringSlot = this.timeslotRepository.findAll(
-            TimeslotSpecifications
-                .hasOwnerId(meetingCreateRequestDto.organizerId())
-                .and(TimeslotSpecifications.hasStatus(SlotBookingStatus.FREE))
-                .and(TimeslotSpecifications.coversRange(startTime, endTime))
-            ).stream()
-            .findFirst()
-            .orElseThrow(() -> new ResponseStatusException(
-                HttpStatusCode.valueOf(422), "No available timeslot covers the requested range")
-            );
+        final TimeslotEntity organizerTimeslot = findCoveringFreeSlot(
+            meetingCreateRequestDto.organizerId(), startTime, endTime, "No available timeslot for organizer");
+        final List<TimeslotEntity> participantTimeslots = meetingCreateRequestDto.participantUserIds().stream()
+            .map(userId -> findCoveringFreeSlot(
+                userId, startTime, endTime, "No available timeslot for participant: " + userId))
+            .toList();
         if (this.meetingRepository.existsByOrganizerIdAndStartTimeAndEndTime(
             meetingCreateRequestDto.organizerId(),
             startTime,
@@ -74,7 +68,8 @@ public class MeetingService {
             return this.meetingMapper.toDto(
                 createMeetingWithParticipants(
                     meetingCreateRequestDto,
-                    coveringSlot
+                    organizerTimeslot,
+                    participantTimeslots
                 )
             );
         } catch (final DataIntegrityViolationException dataIntegrityViolationException) {
@@ -91,30 +86,55 @@ public class MeetingService {
         }
     }
 
+    private TimeslotEntity findCoveringFreeSlot(final Long userId,
+                                                final LocalDateTime startTime,
+                                                final LocalDateTime endTime,
+                                                final String errorMessage) {
+        return this.timeslotRepository.findAll(TimeslotSpecifications
+                .hasOwnerId(userId)
+                .and(TimeslotSpecifications.hasStatus(SlotBookingStatus.FREE))
+                .and(TimeslotSpecifications.coversRange(startTime, endTime))
+            ).stream()
+            .findFirst()
+            .orElseThrow(() ->
+                new ResponseStatusException(
+                    HttpStatusCode.valueOf(422),
+                    errorMessage
+                )
+            );
+    }
+
     private MeetingEntity createMeetingWithParticipants(final MeetingCreateRequestDto meetingCreateRequestDto,
-                                                        final TimeslotEntity coveringSlot) {
-        mutateTimeslot(coveringSlot, meetingCreateRequestDto.startTime(), meetingCreateRequestDto.endTime());
+                                                        final TimeslotEntity organizerTimeslot,
+                                                        final List<TimeslotEntity> participantTimeslots) {
+        mutateTimeslot(
+            organizerTimeslot,
+            meetingCreateRequestDto.startTime(),
+            meetingCreateRequestDto.endTime()
+        );
+        participantTimeslots.forEach(participantTimeslot ->
+            mutateTimeslot(
+                participantTimeslot,
+                meetingCreateRequestDto.startTime(),
+                meetingCreateRequestDto.endTime()
+            )
+        );
         final MeetingEntity meetingEntity = this.meetingRepository.save(
             MeetingEntity.builder()
                 .title(meetingCreateRequestDto.title())
                 .description(meetingCreateRequestDto.description())
                 .startTime(meetingCreateRequestDto.startTime())
                 .endTime(meetingCreateRequestDto.endTime())
-                .organizer(coveringSlot.getOwner())
+                .organizer(organizerTimeslot.getOwner())
                 .participants(new ArrayList<>())
                 .build()
         );
-        final List<ParticipantEntity> participants = meetingCreateRequestDto.participantUserIds().stream()
-            .map(userId ->
-                this.userRepository.findById(userId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + userId))
-            )
-            .map(userEntity ->
+        final List<ParticipantEntity> participants = participantTimeslots.stream()
+            .map(participantTimeslot ->
                 ParticipantEntity.builder()
                     .meeting(meetingEntity)
-                    .user(userEntity)
-                    .build()
-            )
+                    .user(participantTimeslot.getOwner())
+                    .build())
             .toList();
         meetingEntity.setParticipants(this.participantRepository.saveAll(participants));
         return meetingEntity;
