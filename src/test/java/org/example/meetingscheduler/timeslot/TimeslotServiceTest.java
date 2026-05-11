@@ -70,12 +70,35 @@ class TimeslotServiceTest {
             final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
             final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
             final TimeslotEntity existing = TimeslotEntity.builder()
-                .id(1L).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
+                .id(1L).owner(organizer).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
             when(userRepository.findByIdIs(1L)).thenReturn(Optional.of(organizer));
-            when(timeslotRepository.findByOwnerIdAndStartTimeAndEndTime(1L, start, end)).thenReturn(Optional.of(existing));
+            when(timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
+                .thenReturn(List.of(existing)); // coversRange matches exact duplicate
 
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.createTimeslot(1L, start, end))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
+        void throwsConflict_whenNewSlotIsContainedWithinExistingSlot() {
+            // Arrange: existing 09:00-12:00, new 10:00-11:00 — fully contained, not a partial overlap
+            final LocalDateTime newStart = LocalDateTime.of(2026, 5, 10, 10, 0);
+            final LocalDateTime newEnd = LocalDateTime.of(2026, 5, 10, 11, 0);
+            final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
+            final TimeslotEntity coveringTimeslot = TimeslotEntity.builder()
+                .id(1L).owner(organizer)
+                .startTime(LocalDateTime.of(2026, 5, 10, 9, 0))
+                .endTime(LocalDateTime.of(2026, 5, 10, 12, 0))
+                .status(SlotBookingStatus.FREE).build();
+            when(userRepository.findByIdIs(1L)).thenReturn(Optional.of(organizer));
+            when(timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
+                .thenReturn(List.of(coveringTimeslot));
+
+            // Act & Assert
+            assertThatThrownBy(() -> timeslotService.createTimeslot(1L, newStart, newEnd))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);
@@ -89,22 +112,23 @@ class TimeslotServiceTest {
             final LocalDateTime newStart = LocalDateTime.of(2026, 5, 10, 11, 0);
             final LocalDateTime newEnd = LocalDateTime.of(2026, 5, 10, 12, 0);
             final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
-            final TimeslotEntity existing = TimeslotEntity.builder()
+            final TimeslotEntity existingTimeslot = TimeslotEntity.builder()
                 .id(1L).owner(organizer).startTime(existingStart).endTime(existingEnd).status(SlotBookingStatus.FREE).build();
             final TimeslotResponseDto expected = new TimeslotResponseDto(
                 1L, new UserResponseDto(1L, "Alice", "alice@example.com"), existingStart, newEnd, SlotBookingStatus.FREE);
             when(userRepository.findByIdIs(1L)).thenReturn(Optional.of(organizer));
             when(timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
-                .thenReturn(List.of(existing));
-            when(timeslotMapper.toDto(existing)).thenReturn(expected);
+                .thenReturn(List.of())          // coversRange check: no covering slot
+                .thenReturn(List.of(existingTimeslot)); // overlapsOrAdjacent: merge candidate
+            when(timeslotMapper.toDto(existingTimeslot)).thenReturn(expected);
 
             // Act
             final TimeslotResponseDto result = timeslotService.createTimeslot(1L, newStart, newEnd);
 
             // Assert
             assertThat(result).isEqualTo(expected);
-            assertThat(existing.getStartTime()).isEqualTo(existingStart);
-            assertThat(existing.getEndTime()).isEqualTo(newEnd);
+            assertThat(existingTimeslot.getStartTime()).isEqualTo(existingStart);
+            assertThat(existingTimeslot.getEndTime()).isEqualTo(newEnd);
         }
 
         @Test
@@ -121,7 +145,8 @@ class TimeslotServiceTest {
                 1L, new UserResponseDto(1L, "Alice", "alice@example.com"), existingStart, newEnd, SlotBookingStatus.FREE);
             when(userRepository.findByIdIs(1L)).thenReturn(Optional.of(organizer));
             when(timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
-                .thenReturn(List.of(existing));
+                .thenReturn(List.of())          // coversRange check: no covering slot
+                .thenReturn(List.of(existing)); // overlapsOrAdjacent: merge candidate
             when(timeslotMapper.toDto(existing)).thenReturn(expected);
 
             // Act
@@ -147,7 +172,8 @@ class TimeslotServiceTest {
                 1L, new UserResponseDto(1L, "Alice", "alice@example.com"), newStart, newEnd, SlotBookingStatus.FREE);
             when(userRepository.findByIdIs(1L)).thenReturn(Optional.of(organizer));
             when(timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
-                .thenReturn(List.of(existing));
+                .thenReturn(List.of())          // coversRange check: no covering slot
+                .thenReturn(List.of(existing)); // overlapsOrAdjacent: merge candidate
             when(timeslotMapper.toDto(existing)).thenReturn(expected);
 
             // Act

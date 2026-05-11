@@ -128,6 +128,7 @@ Cancelling a meeting (`DELETE /meetings/{id}`) restores every party's `BOOKED` t
 | Scenario | Response |
 |---|---|
 | Timeslot with the same organizer, start, and end already exists | `409 Conflict` |
+| New timeslot is fully contained within an existing timeslot | `409 Conflict` |
 | User with the same email already exists | `409 Conflict` |
 | Meeting with the same organizer and time range already exists | `409 Conflict` |
 | Deleting a `BOOKED` timeslot directly (must cancel the meeting instead) | `409 Conflict` |

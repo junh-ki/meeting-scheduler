@@ -7,10 +7,6 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 public interface TimeslotRepository extends JpaRepository<TimeslotEntity, Long>, JpaSpecificationExecutor<TimeslotEntity> {
 
-    Optional<TimeslotEntity> findByOwnerIdAndStartTimeAndEndTime(final Long ownerId,
-                                                                 final LocalDateTime startTime,
-                                                                 final LocalDateTime endTime);
-
     Optional<TimeslotEntity> findByOwnerIdAndStartTimeAndEndTimeAndStatus(final Long ownerId,
                                                                           final LocalDateTime startTime,
                                                                           final LocalDateTime endTime,

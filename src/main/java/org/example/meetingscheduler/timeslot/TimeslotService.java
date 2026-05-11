@@ -3,7 +3,6 @@ package org.example.meetingscheduler.timeslot;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.example.meetingscheduler.timeslot.dto.TimeslotResponseDto;
 import org.example.meetingscheduler.timeslot.dto.TimeslotUpdateRequestDto;
 import org.example.meetingscheduler.user.UserEntity;
@@ -15,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TimeslotService {
@@ -31,19 +29,7 @@ public class TimeslotService {
         validateStartAndEndTime(startTime, endTime);
         final UserEntity owner = this.userRepository.findByIdIs(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        this.timeslotRepository.findByOwnerIdAndStartTimeAndEndTime(userId, startTime, endTime)
-            .ifPresent(timeslot -> {
-                log.warn(
-                    "Duplicate timeslot creation rejected: userId={}, startTime={}, endTime={}",
-                    userId,
-                    startTime,
-                    endTime
-                );
-                throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Timeslot already exists for this time range"
-                );
-            });
+        validateNotCoveredByExistingSlot(userId, startTime, endTime);
         final List<TimeslotEntity> overlapping = this.timeslotRepository.findAll(
             Specification.where(TimeslotSpecifications.hasOwnerId(userId))
                 .and(TimeslotSpecifications.overlapsOrAdjacent(startTime, endTime))
@@ -63,6 +49,24 @@ public class TimeslotService {
                     .build()
             )
         );
+    }
+
+    private void validateNotCoveredByExistingSlot(final Long userId,
+                                                  final LocalDateTime startTime,
+                                                  final LocalDateTime endTime) {
+        this.timeslotRepository
+            .findAll(
+                Specification
+                    .where(TimeslotSpecifications.hasOwnerId(userId))
+                    .and(TimeslotSpecifications.coversRange(startTime, endTime))
+            ).stream()
+            .findFirst()
+            .ifPresent(coveringTimeslot -> {
+                throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "An existing timeslot already covers this time range"
+                );
+            });
     }
 
     /**
