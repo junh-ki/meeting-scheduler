@@ -1,5 +1,9 @@
 package org.example.meetingscheduler.meeting;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -14,23 +18,47 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+@Tag(name = "Meetings")
 @RestController
 @RequiredArgsConstructor
 public class MeetingController {
 
     private final MeetingService meetingService;
 
+    @Operation(
+        summary = "List all meetings",
+        description = "Results are sorted by startTime then endTime ascending."
+    )
+    @ApiResponse(responseCode = "200", description = "OK")
     @GetMapping("/meetings")
     public List<MeetingResponseDto> getMeetings() {
         return this.meetingService.getMeetings();
     }
 
+    @Operation(
+        summary = "Schedule a meeting",
+        description = "Every party (organizer and all participants) must have a FREE timeslot fully covering the requested range. Matching slots are split and marked BOOKED."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Meeting created"),
+        @ApiResponse(responseCode = "400", description = "Invalid request body or endTime not after startTime"),
+        @ApiResponse(responseCode = "409", description = "Meeting with the same organizer and time range already exists"),
+        @ApiResponse(responseCode = "422", description = "No covering FREE timeslot for the organizer or a participant")
+    })
     @PostMapping("/meetings")
     @ResponseStatus(HttpStatus.CREATED)
     public MeetingResponseDto createMeeting(@RequestBody @Valid final MeetingCreateRequestDto meetingCreateRequestDto) {
         return this.meetingService.createMeeting(meetingCreateRequestDto);
     }
 
+    @Operation(
+        summary = "Cancel a meeting",
+        description = "Restores every party's BOOKED timeslot to FREE and merges any adjacent FREE slots."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "Meeting cancelled"),
+        @ApiResponse(responseCode = "404", description = "Meeting not found")
+    })
     @DeleteMapping("/meetings/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteMeeting(@PathVariable final Long id) {
