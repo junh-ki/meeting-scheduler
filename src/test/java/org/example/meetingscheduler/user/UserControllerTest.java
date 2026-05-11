@@ -7,10 +7,13 @@ import org.example.meetingscheduler.user.dto.UserResponseDto;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.server.ResponseStatusException;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -49,6 +52,19 @@ class UserControllerTest {
             .andExpect(jsonPath("$[0].id").value(1))
             .andExpect(jsonPath("$[0].name").value("Alice"))
             .andExpect(jsonPath("$[0].email").value("alice@example.com"));
+    }
+
+    @Test
+    void createUser_returnsConflict_whenEmailAlreadyExists() throws Exception {
+        // Arrange
+        when(this.userService.createUser(any(UserRequestDto.class)))
+            .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Email is already in use"));
+
+        // Act & Assert
+        this.mockMvc.perform(post("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"Alice\",\"email\":\"alice@example.com\"}"))
+            .andExpect(status().isConflict());
     }
 
     @Test
