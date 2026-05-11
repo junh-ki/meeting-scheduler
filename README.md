@@ -8,6 +8,32 @@
 
 A REST API for scheduling meetings against organizer availability. Organizers publish free timeslots; booking a meeting automatically splits or shrinks the covering slot so the remaining availability stays accurate.
 
+## Demo Start Instructions
+
+**Prerequisites:** Java 21, Maven, Docker.
+
+**1. Start the application:**
+
+```bash
+./run.sh
+```
+
+`run.sh` starts the Postgres container via Docker Compose, waits until the database is ready, builds the JAR, and launches the application. Flyway applies all migrations automatically on startup. The application listens on `http://localhost:8080`.
+
+When you terminate the process (Ctrl+C), Spring Boot shuts down gracefully and the Postgres container is stopped, but the Docker volume is preserved so data persists across restarts.
+
+To fully wipe the database:
+
+```bash
+docker compose down --volumes
+```
+
+**2. Run the tests:**
+
+```bash
+./mvnw clean test
+```
+
 ## Architecture
 
 The project follows a standard layered architecture inside a single Spring Boot application.
@@ -109,32 +135,6 @@ Cancelling a meeting (`DELETE /meetings/{id}`) restores every party's `BOOKED` t
 | Any participant has no FREE slot covering the requested range | `422 Unprocessable Entity` |
 
 Pessimistic write locking (`SELECT FOR UPDATE`) on the organizer row serializes concurrent timeslot creation per user. A `UNIQUE` constraint on each table acts as the final safety net for concurrent requests that pass the application-level check simultaneously.
-
-## Demo Start Instructions
-
-**Prerequisites:** Java 21, Maven, Docker.
-
-**1. Start the application:**
-
-```bash
-./run.sh
-```
-
-`run.sh` starts the Postgres container via Docker Compose, waits until the database is ready, builds the JAR, and launches the application. Flyway applies all migrations automatically on startup. The application listens on `http://localhost:8080`.
-
-When you terminate the process (Ctrl+C), Spring Boot shuts down gracefully and the Postgres container is stopped, but the Docker volume is preserved so data persists across restarts.
-
-To fully wipe the database:
-
-```bash
-docker compose down --volumes
-```
-
-**2. Run the tests:**
-
-```bash
-./mvnw clean test
-```
 
 ## Resources
 
