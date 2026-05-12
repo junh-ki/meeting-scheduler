@@ -142,9 +142,13 @@ public class MeetingService {
     }
 
     @Transactional
-    public void deleteMeeting(final Long id) {
+    public void deleteMeeting(final Long userId,
+                              final Long id) {
         final MeetingEntity meetingEntity = this.meetingRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Meeting not found"));
+        if (!meetingEntity.getOrganizer().getId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Meeting does not belong to this user");
+        }
         final LocalDateTime startTime = meetingEntity.getStartTime();
         final LocalDateTime endTime = meetingEntity.getEndTime();
         restoreTimeslot(

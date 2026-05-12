@@ -148,10 +148,10 @@ class TimeslotControllerTest {
             final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 12, 0);
             final TimeslotResponseDto timeslotResponseDto = new TimeslotResponseDto(
                 1L, new UserResponseDto(1L, "Alice", "alice@example.com"), start, end, SlotBookingStatus.BOOKED);
-            when(timeslotService.updateTimeslot(eq(1L), any(TimeslotUpdateRequestDto.class))).thenReturn(timeslotResponseDto);
+            when(timeslotService.updateTimeslot(eq(1L), eq(1L), any(TimeslotUpdateRequestDto.class))).thenReturn(timeslotResponseDto);
 
             // Act & Assert
-            mockMvc.perform(put("/timeslots/1")
+            mockMvc.perform(put("/users/1/timeslots/1")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"startTime\":\"2026-05-10T11:00:00\",\"endTime\":\"2026-05-10T12:00:00\",\"status\":\"BOOKED\"}"))
                 .andExpect(status().isOk())
@@ -162,11 +162,11 @@ class TimeslotControllerTest {
         @Test
         void returnsNotFound_whenTimeslotDoesNotExist() throws Exception {
             // Arrange
-            when(timeslotService.updateTimeslot(eq(99L), any(TimeslotUpdateRequestDto.class)))
+            when(timeslotService.updateTimeslot(eq(1L), eq(99L), any(TimeslotUpdateRequestDto.class)))
                 .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Timeslot not found"));
 
             // Act & Assert
-            mockMvc.perform(put("/timeslots/99")
+            mockMvc.perform(put("/users/1/timeslots/99")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"status\":\"BOOKED\"}"))
                 .andExpect(status().isNotFound());
@@ -175,14 +175,27 @@ class TimeslotControllerTest {
         @Test
         void returnsConflict_whenTimeslotIsBooked() throws Exception {
             // Arrange
-            when(timeslotService.updateTimeslot(eq(10L), any(TimeslotUpdateRequestDto.class)))
+            when(timeslotService.updateTimeslot(eq(1L), eq(10L), any(TimeslotUpdateRequestDto.class)))
                 .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Timeslot is in use by a meeting -- cancel the meeting instead"));
 
             // Act & Assert
-            mockMvc.perform(put("/timeslots/10")
+            mockMvc.perform(put("/users/1/timeslots/10")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("{\"status\":\"FREE\"}"))
                 .andExpect(status().isConflict());
+        }
+
+        @Test
+        void returnsForbidden_whenTimeslotBelongsToAnotherUser() throws Exception {
+            // Arrange
+            when(timeslotService.updateTimeslot(eq(2L), eq(1L), any(TimeslotUpdateRequestDto.class)))
+                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Timeslot does not belong to this user"));
+
+            // Act & Assert
+            mockMvc.perform(put("/users/2/timeslots/1")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"status\":\"FREE\"}"))
+                .andExpect(status().isForbidden());
         }
     }
 
@@ -192,7 +205,7 @@ class TimeslotControllerTest {
         @Test
         void returnsNoContent() throws Exception {
             // Act & Assert
-            mockMvc.perform(delete("/timeslots/1"))
+            mockMvc.perform(delete("/users/1/timeslots/1"))
                 .andExpect(status().isNoContent());
         }
 
@@ -200,10 +213,10 @@ class TimeslotControllerTest {
         void returnsNotFound_whenTimeslotDoesNotExist() throws Exception {
             // Arrange
             doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Timeslot not found"))
-                .when(timeslotService).deleteTimeslot(99L);
+                .when(timeslotService).deleteTimeslot(1L, 99L);
 
             // Act & Assert
-            mockMvc.perform(delete("/timeslots/99"))
+            mockMvc.perform(delete("/users/1/timeslots/99"))
                 .andExpect(status().isNotFound());
         }
 
@@ -211,11 +224,22 @@ class TimeslotControllerTest {
         void returnsConflict_whenTimeslotIsBooked() throws Exception {
             // Arrange
             doThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Timeslot is in use by a meeting -- cancel the meeting instead"))
-                .when(timeslotService).deleteTimeslot(10L);
+                .when(timeslotService).deleteTimeslot(1L, 10L);
 
             // Act & Assert
-            mockMvc.perform(delete("/timeslots/10"))
+            mockMvc.perform(delete("/users/1/timeslots/10"))
                 .andExpect(status().isConflict());
+        }
+
+        @Test
+        void returnsForbidden_whenTimeslotBelongsToAnotherUser() throws Exception {
+            // Arrange
+            doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Timeslot does not belong to this user"))
+                .when(timeslotService).deleteTimeslot(2L, 1L);
+
+            // Act & Assert
+            mockMvc.perform(delete("/users/2/timeslots/1"))
+                .andExpect(status().isForbidden());
         }
     }
 }

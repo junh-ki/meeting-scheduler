@@ -39,7 +39,7 @@ Typical usage flow:
 2. **Publish availability** - `POST /users/{userId}/timeslots?startTime=...&endTime=...`
 3. **Query a user's calendar** - `GET /users/{userId}/timeslots` (optionally filter by `status=FREE|BOOKED`, `from`, `to`)
 4. **Schedule a meeting** - `POST /meetings` with organizer, participants, and time range
-5. **Cancel a meeting** - `DELETE /meetings/{id}`
+5. **Cancel a meeting** - `DELETE /users/{userId}/meetings/{id}`
 
 ## Architecture
 
@@ -172,7 +172,7 @@ After:   [09:00 ── 10:00] FREE  +  [10:00 ──────── 11:00] BO
 
 ### Meeting Cancellation
 
-`DELETE /meetings/{id}` restores every party's BOOKED slot back to FREE and re-merges any adjacent FREE slots, leaving each calendar in exactly the contiguous state it was in before the meeting was booked.
+`DELETE /users/{userId}/meetings/{id}` restores every party's BOOKED slot back to FREE and re-merges any adjacent FREE slots, leaving each calendar in exactly the contiguous state it was in before the meeting was booked.
 
 ### Conflict and Validation Rules
 

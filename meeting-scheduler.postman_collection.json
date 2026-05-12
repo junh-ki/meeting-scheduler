@@ -220,13 +220,15 @@
         "method": "DELETE",
         "header": [],
         "url": {
-          "raw": "http://localhost:8080/meetings/{{id}}",
+          "raw": "http://localhost:8080/users/{{userId}}/meetings/{{id}}",
           "protocol": "http",
           "host": [
             "localhost"
           ],
           "port": "8080",
           "path": [
+            "users",
+            "{{userId}}",
             "meetings",
             "{{id}}"
           ]
@@ -240,13 +242,15 @@
         "method": "DELETE",
         "header": [],
         "url": {
-          "raw": "http://localhost:8080/timeslots/{{id}}",
+          "raw": "http://localhost:8080/users/{{userId}}/timeslots/{{id}}",
           "protocol": "http",
           "host": [
             "localhost"
           ],
           "port": "8080",
           "path": [
+            "users",
+            "{{userId}}",
             "timeslots",
             "{{id}}"
           ]

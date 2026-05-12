@@ -57,11 +57,13 @@ public class MeetingController {
     )
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Meeting cancelled"),
+        @ApiResponse(responseCode = "403", description = "Meeting does not belong to this user"),
         @ApiResponse(responseCode = "404", description = "Meeting not found")
     })
-    @DeleteMapping("/meetings/{id}")
+    @DeleteMapping("/users/{userId}/meetings/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteMeeting(@PathVariable final Long id) {
-        this.meetingService.deleteMeeting(id);
+    public void deleteMeeting(@PathVariable final Long userId,
+                              @PathVariable final Long id) {
+        this.meetingService.deleteMeeting(userId, id);
     }
 }

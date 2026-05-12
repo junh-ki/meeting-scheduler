@@ -76,14 +76,17 @@ public class TimeslotController {
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Timeslot updated"),
         @ApiResponse(responseCode = "400", description = "Resulting time range is invalid"),
+        @ApiResponse(responseCode = "403", description = "Timeslot does not belong to this user"),
         @ApiResponse(responseCode = "404", description = "Timeslot not found"),
         @ApiResponse(responseCode = "409", description = "Timeslot is BOOKED by a meeting")
     })
-    @PutMapping("/timeslots/{id}")
+    @PutMapping("/users/{userId}/timeslots/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public TimeslotResponseDto updateTimeslot(@PathVariable final Long id,
+    public TimeslotResponseDto updateTimeslot(@PathVariable final Long userId,
+                                              @PathVariable final Long id,
                                               @RequestBody @Valid final TimeslotUpdateRequestDto timeslotUpdateRequestDto) {
         return this.timeslotService.updateTimeslot(
+            userId,
             id,
             timeslotUpdateRequestDto
         );
@@ -95,12 +98,14 @@ public class TimeslotController {
     )
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "Timeslot deleted"),
+        @ApiResponse(responseCode = "403", description = "Timeslot does not belong to this user"),
         @ApiResponse(responseCode = "404", description = "Timeslot not found"),
         @ApiResponse(responseCode = "409", description = "Timeslot is BOOKED by a meeting")
     })
-    @DeleteMapping("/timeslots/{id}")
+    @DeleteMapping("/users/{userId}/timeslots/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteTimeslot(@PathVariable final Long id) {
-        this.timeslotService.deleteTimeslot(id);
+    public void deleteTimeslot(@PathVariable final Long userId,
+                               @PathVariable final Long id) {
+        this.timeslotService.deleteTimeslot(userId, id);
     }
 }

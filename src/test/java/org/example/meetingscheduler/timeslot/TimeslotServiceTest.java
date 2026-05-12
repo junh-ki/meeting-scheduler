@@ -321,7 +321,7 @@ class TimeslotServiceTest {
             when(timeslotMapper.toDto(existing)).thenReturn(dto);
 
             // Act & Assert
-            assertThat(timeslotService.updateTimeslot(1L, request)).isEqualTo(dto);
+            assertThat(timeslotService.updateTimeslot(1L, 1L, request)).isEqualTo(dto);
         }
 
         @Test
@@ -340,7 +340,7 @@ class TimeslotServiceTest {
             when(timeslotMapper.toDto(existing)).thenReturn(timeslotResponseDto);
 
             // Act & Assert
-            assertThat(timeslotService.updateTimeslot(1L, timeslotUpdateRequestDto)).isEqualTo(timeslotResponseDto);
+            assertThat(timeslotService.updateTimeslot(1L, 1L, timeslotUpdateRequestDto)).isEqualTo(timeslotResponseDto);
         }
 
         @Test
@@ -350,22 +350,39 @@ class TimeslotServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.updateTimeslot(
-                    99L, new TimeslotUpdateRequestDto(null, null, SlotBookingStatus.BOOKED)))
+                    1L, 99L, new TimeslotUpdateRequestDto(null, null, SlotBookingStatus.BOOKED)))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
         }
 
         @Test
+        void throwsForbidden_whenTimeslotBelongsToAnotherUser() {
+            // Arrange
+            final UserEntity owner = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
+            final TimeslotEntity timeslot = TimeslotEntity.builder()
+                .id(1L).owner(owner).status(SlotBookingStatus.FREE).build();
+            when(timeslotRepository.findById(1L)).thenReturn(Optional.of(timeslot));
+
+            // Act & Assert
+            assertThatThrownBy(() -> timeslotService.updateTimeslot(
+                    2L, 1L, new TimeslotUpdateRequestDto(null, null, SlotBookingStatus.BOOKED)))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+        }
+
+        @Test
         void throwsConflict_whenTimeslotIsBooked() {
             // Arrange
+            final UserEntity userEntity = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
             final TimeslotEntity bookedTimeslot = TimeslotEntity.builder()
-                .id(1L).status(SlotBookingStatus.BOOKED).build();
+                .id(1L).owner(userEntity).status(SlotBookingStatus.BOOKED).build();
             when(timeslotRepository.findById(1L)).thenReturn(Optional.of(bookedTimeslot));
 
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.updateTimeslot(
-                    1L, new TimeslotUpdateRequestDto(null, null, SlotBookingStatus.FREE)))
+                    1L, 1L, new TimeslotUpdateRequestDto(null, null, SlotBookingStatus.FREE)))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);
@@ -387,7 +404,7 @@ class TimeslotServiceTest {
             when(timeslotRepository.findById(1L)).thenReturn(Optional.of(existing));
 
             // Act & Assert
-            assertThatThrownBy(() -> timeslotService.updateTimeslot(1L, timeslotUpdateRequestDto))
+            assertThatThrownBy(() -> timeslotService.updateTimeslot(1L, 1L, timeslotUpdateRequestDto))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
@@ -409,7 +426,7 @@ class TimeslotServiceTest {
             when(timeslotRepository.findById(1L)).thenReturn(Optional.of(free));
 
             // Act
-            timeslotService.deleteTimeslot(1L);
+            timeslotService.deleteTimeslot(1L, 1L);
 
             // Assert
             verify(timeslotRepository).deleteById(1L);
@@ -421,10 +438,29 @@ class TimeslotServiceTest {
             when(timeslotRepository.findById(99L)).thenReturn(Optional.empty());
 
             // Act & Assert
-            assertThatThrownBy(() -> timeslotService.deleteTimeslot(99L))
+            assertThatThrownBy(() -> timeslotService.deleteTimeslot(1L, 99L))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
+        }
+
+        @Test
+        void throwsForbidden_whenTimeslotBelongsToAnotherUser() {
+            // Arrange
+            final UserEntity owner = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
+            final TimeslotEntity free = TimeslotEntity.builder()
+                .id(1L).owner(owner)
+                .startTime(LocalDateTime.of(2026, 5, 10, 10, 0))
+                .endTime(LocalDateTime.of(2026, 5, 10, 11, 0))
+                .status(SlotBookingStatus.FREE).build();
+            when(timeslotRepository.findById(1L)).thenReturn(Optional.of(free));
+
+            // Act & Assert
+            assertThatThrownBy(() -> timeslotService.deleteTimeslot(2L, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
+            verify(timeslotRepository, never()).deleteById(any());
         }
 
         @Test
@@ -439,7 +475,7 @@ class TimeslotServiceTest {
             when(timeslotRepository.findById(10L)).thenReturn(Optional.of(booked));
 
             // Act & Assert
-            assertThatThrownBy(() -> timeslotService.deleteTimeslot(10L))
+            assertThatThrownBy(() -> timeslotService.deleteTimeslot(1L, 10L))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);

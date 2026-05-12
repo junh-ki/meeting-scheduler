@@ -122,10 +122,19 @@ public class TimeslotService {
     }
 
     @Transactional
-    public TimeslotResponseDto updateTimeslot(final Long id,
+    public TimeslotResponseDto updateTimeslot(final Long userId,
+                                              final Long id,
                                               final TimeslotUpdateRequestDto timeslotUpdateRequestDto) {
         final TimeslotEntity timeslotEntity = this.timeslotRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Timeslot not found"));
+            .orElseThrow(() ->
+                new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Timeslot not found"
+                )
+            );
+        if (!timeslotEntity.getOwner().getId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Timeslot does not belong to this user");
+        }
         if (SlotBookingStatus.BOOKED == timeslotEntity.getStatus()) {
             throw new ResponseStatusException(
                 HttpStatus.CONFLICT,
@@ -148,7 +157,8 @@ public class TimeslotService {
     }
 
     @Transactional
-    public void deleteTimeslot(final Long id) {
+    public void deleteTimeslot(final Long userId,
+                               final Long id) {
         final TimeslotEntity timeslotEntity = this.timeslotRepository.findById(id)
             .orElseThrow(() ->
                 new ResponseStatusException(
@@ -156,6 +166,9 @@ public class TimeslotService {
                     "Timeslot not found"
                 )
             );
+        if (!timeslotEntity.getOwner().getId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Timeslot does not belong to this user");
+        }
         if (SlotBookingStatus.BOOKED == timeslotEntity.getStatus()) {
             throw new ResponseStatusException(
                 HttpStatus.CONFLICT,

@@ -194,10 +194,10 @@ class MeetingControllerTest {
         @Test
         void returnsNoContent_whenMeetingExists() throws Exception {
             // Arrange
-            doNothing().when(meetingService).deleteMeeting(1L);
+            doNothing().when(meetingService).deleteMeeting(1L, 1L);
 
             // Act & Assert
-            mockMvc.perform(delete("/meetings/1"))
+            mockMvc.perform(delete("/users/1/meetings/1"))
                 .andExpect(status().isNoContent());
         }
 
@@ -205,11 +205,22 @@ class MeetingControllerTest {
         void returnsNotFound_whenMeetingDoesNotExist() throws Exception {
             // Arrange
             doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Meeting not found"))
-                .when(meetingService).deleteMeeting(99L);
+                .when(meetingService).deleteMeeting(1L, 99L);
 
             // Act & Assert
-            mockMvc.perform(delete("/meetings/99"))
+            mockMvc.perform(delete("/users/1/meetings/99"))
                 .andExpect(status().isNotFound());
+        }
+
+        @Test
+        void returnsForbidden_whenUserIsNotOrganizer() throws Exception {
+            // Arrange
+            doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Meeting does not belong to this user"))
+                .when(meetingService).deleteMeeting(2L, 1L);
+
+            // Act & Assert
+            mockMvc.perform(delete("/users/2/meetings/1"))
+                .andExpect(status().isForbidden());
         }
     }
 }

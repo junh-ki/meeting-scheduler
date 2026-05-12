@@ -304,10 +304,29 @@ class MeetingServiceTest {
             when(meetingRepository.findById(99L)).thenReturn(Optional.empty());
 
             // Act & Assert
-            assertThatThrownBy(() -> meetingService.deleteMeeting(99L))
+            assertThatThrownBy(() -> meetingService.deleteMeeting(1L, 99L))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
+            verify(timeslotRepository, never()).findByOwnerIdAndStartTimeAndEndTimeAndStatus(any(), any(), any(), any());
+        }
+
+        @Test
+        void throwsForbidden_whenUserIsNotOrganizer() {
+            // Arrange
+            final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 10, 0);
+            final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
+            final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
+            final MeetingEntity meeting = MeetingEntity.builder()
+                .id(100L).title("Sync").startTime(start).endTime(end)
+                .organizer(organizer).participants(List.of()).build();
+            when(meetingRepository.findById(100L)).thenReturn(Optional.of(meeting));
+
+            // Act & Assert
+            assertThatThrownBy(() -> meetingService.deleteMeeting(2L, 100L))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
+                .isEqualTo(HttpStatus.FORBIDDEN);
             verify(timeslotRepository, never()).findByOwnerIdAndStartTimeAndEndTimeAndStatus(any(), any(), any(), any());
         }
 
@@ -328,7 +347,7 @@ class MeetingServiceTest {
                 .thenReturn(Optional.of(bookedSlot));
 
             // Act
-            meetingService.deleteMeeting(100L);
+            meetingService.deleteMeeting(1L, 100L);
 
             // Assert
             assertThat(bookedSlot.getStatus()).isEqualTo(SlotBookingStatus.FREE);
@@ -353,7 +372,7 @@ class MeetingServiceTest {
                 .thenReturn(Optional.of(bookedSlot));
 
             // Act
-            meetingService.deleteMeeting(100L);
+            meetingService.deleteMeeting(1L, 100L);
 
             // Assert
             assertThat(bookedSlot.getStatus()).isEqualTo(SlotBookingStatus.FREE);
@@ -385,7 +404,7 @@ class MeetingServiceTest {
                 .thenReturn(Optional.of(participantSlot));
 
             // Act
-            meetingService.deleteMeeting(100L);
+            meetingService.deleteMeeting(1L, 100L);
 
             // Assert
             assertThat(organizerSlot.getStatus()).isEqualTo(SlotBookingStatus.FREE);
