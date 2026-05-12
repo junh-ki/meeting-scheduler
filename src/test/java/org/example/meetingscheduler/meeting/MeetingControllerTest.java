@@ -46,10 +46,10 @@ class MeetingControllerTest {
         @Test
         void returnsEmptyArray_whenNoMeetings() throws Exception {
             // Arrange
-            when(meetingService.getMeetings()).thenReturn(Collections.emptyList());
+            when(meetingService.getMeetings(1L)).thenReturn(Collections.emptyList());
 
             // Act & Assert
-            mockMvc.perform(get("/meetings"))
+            mockMvc.perform(get("/users/1/meetings"))
                 .andExpect(status().isOk())
                 .andExpect(content().json("[]"));
         }
@@ -65,10 +65,10 @@ class MeetingControllerTest {
                 LocalDateTime.of(2026, 5, 9, 10, 0),
                 LocalDateTime.of(2026, 5, 9, 11, 0),
                 organizer, List.of(participant));
-            when(meetingService.getMeetings()).thenReturn(List.of(meetingResponseDto));
+            when(meetingService.getMeetings(1L)).thenReturn(List.of(meetingResponseDto));
 
             // Act & Assert
-            mockMvc.perform(get("/meetings"))
+            mockMvc.perform(get("/users/1/meetings"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(100))
                 .andExpect(jsonPath("$[0].title").value("Sync"))

@@ -26,13 +26,13 @@ public class MeetingController {
     private final MeetingService meetingService;
 
     @Operation(
-        summary = "List all meetings",
-        description = "Results are sorted by startTime then endTime ascending."
+        summary = "List meetings for a user",
+        description = "Returns all meetings where the user is the organizer or a participant. Results are sorted by startTime then endTime ascending."
     )
     @ApiResponse(responseCode = "200", description = "OK")
-    @GetMapping("/meetings")
-    public List<MeetingResponseDto> getMeetings() {
-        return this.meetingService.getMeetings();
+    @GetMapping("/users/{userId}/meetings")
+    public List<MeetingResponseDto> getMeetings(@PathVariable final Long userId) {
+        return this.meetingService.getMeetings(userId);
     }
 
     @Operation(

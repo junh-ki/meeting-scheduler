@@ -58,11 +58,11 @@ class MeetingServiceTest {
         @Test
         void returnsEmptyList_whenRepositoryIsEmpty() {
             // Arrange
-            when(meetingRepository.findAllByOrderByStartTimeAscEndTimeAsc())
+            when(meetingRepository.findDistinctByOrganizerIdOrParticipantsUserIdOrderByStartTimeAscEndTimeAsc(1L, 1L))
                 .thenReturn(Collections.emptyList());
 
             // Act & Assert
-            assertThat(meetingService.getMeetings()).isEmpty();
+            assertThat(meetingService.getMeetings(1L)).isEmpty();
         }
 
         @Test
@@ -76,13 +76,13 @@ class MeetingServiceTest {
             final MeetingResponseDto meetingResponseDto = new MeetingResponseDto(
                 1L, "Sync", null, start, end,
                 new UserResponseDto(1L, "Alice", "alice@example.com"), Collections.emptyList());
-            when(meetingRepository.findAllByOrderByStartTimeAscEndTimeAsc())
+            when(meetingRepository.findDistinctByOrganizerIdOrParticipantsUserIdOrderByStartTimeAscEndTimeAsc(1L, 1L))
                 .thenReturn(List.of(meetingEntity));
             when(meetingMapper.toDto(meetingEntity))
                 .thenReturn(meetingResponseDto);
 
             // Act & Assert
-            assertThat(meetingService.getMeetings()).containsExactly(meetingResponseDto);
+            assertThat(meetingService.getMeetings(1L)).containsExactly(meetingResponseDto);
         }
     }
 

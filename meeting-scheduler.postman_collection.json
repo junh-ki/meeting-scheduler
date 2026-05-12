@@ -329,18 +329,20 @@
       "response": []
     },
     {
-      "name": "Get meetings for all users",
+      "name": "Get meetings for User 1",
       "request": {
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "http://localhost:8080/meetings",
+          "raw": "http://localhost:8080/users/{{userId}}/meetings",
           "protocol": "http",
           "host": [
             "localhost"
           ],
           "port": "8080",
           "path": [
+            "users",
+            "{{userId}}",
             "meetings"
           ]
         }

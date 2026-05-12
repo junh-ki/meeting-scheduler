@@ -39,7 +39,8 @@ Typical usage flow:
 2. **Publish availability** - `POST /users/{userId}/timeslots?startTime=...&endTime=...`
 3. **Query a user's calendar** - `GET /users/{userId}/timeslots` (optionally filter by `status=FREE|BOOKED`, `from`, `to`)
 4. **Schedule a meeting** - `POST /meetings` with organizer, participants, and time range
-5. **Cancel a meeting** - `DELETE /users/{userId}/meetings/{id}`
+5. **Query a user's meetings** - `GET /users/{userId}/meetings` (returns meetings where the user is organizer or participant)
+6. **Cancel a meeting** - `DELETE /users/{userId}/meetings/{id}`
 
 ## Architecture
 

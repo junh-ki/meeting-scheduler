@@ -33,8 +33,8 @@ public class MeetingService {
     private final TimeslotService timeslotService;
     private final ParticipantRepository participantRepository;
 
-    public List<MeetingResponseDto> getMeetings() {
-        return this.meetingRepository.findAllByOrderByStartTimeAscEndTimeAsc().stream()
+    public List<MeetingResponseDto> getMeetings(final Long userId) {
+        return this.meetingRepository.findDistinctByOrganizerIdOrParticipantsUserIdOrderByStartTimeAscEndTimeAsc(userId, userId).stream()
             .map(this.meetingMapper::toDto)
             .toList();
     }
