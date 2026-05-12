@@ -14,3 +14,9 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,info
