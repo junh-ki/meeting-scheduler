@@ -54,7 +54,10 @@ info "Build ${GREEN}complete${RESET}."
 # ── 3. run ────────────────────────────────────────────────────────────────────
 JAR=$(find target -maxdepth 1 -name "meeting-scheduler-*.jar" ! -name "*sources*" | head -1)
 info "Launching ${CYAN}meeting-scheduler${RESET} — ${DIM}${JAR}${RESET}"
+info "Debugger listening on ${CYAN}localhost:5005${RESET} ${DIM}(suspend=n)${RESET}"
 
-java -Dspring.output.ansi.enabled=always -jar "$JAR" &
+java -Dspring.output.ansi.enabled=always \
+     -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005 \
+     -jar "$JAR" &
 APP_PID=$!
 wait "$APP_PID"

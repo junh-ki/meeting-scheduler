@@ -1,7 +1,6 @@
 # TODO
 
 1. Postman collection
-2. Arch Diagram
 
 ---
 
@@ -29,7 +28,13 @@ To fully wipe the database:
 docker compose down --volumes
 ```
 
-**2. Run the tests:**
+**2. Attach a debugger:**
+
+`run.sh` starts the JVM with remote debug enabled on port `5005` (`suspend=n` — the app starts immediately without waiting for a debugger).
+In IntelliJ: **Run → Edit Configurations → + → Remote JVM Debug** — host `localhost`, port `5005`, then hit Debug after the app is up.
+To break on startup instead, change `suspend=n` to `suspend=y` in `run.sh` — the JVM will pause until the debugger connects.
+
+**3. Run the tests:**
 
 ```bash
 ./mvnw clean test
