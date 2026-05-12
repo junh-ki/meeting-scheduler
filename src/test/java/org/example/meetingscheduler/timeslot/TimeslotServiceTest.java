@@ -209,6 +209,19 @@ class TimeslotServiceTest {
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
         }
+
+        @Test
+        void throwsBadRequest_whenStartAndEndTimeSpanMidnight() {
+            // Arrange: 23:30 on one day to 00:30 on the next
+            final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 23, 30);
+            final LocalDateTime end = LocalDateTime.of(2026, 5, 11, 0, 30);
+
+            // Act & Assert
+            assertThatThrownBy(() -> timeslotService.createTimeslot(1L, start, end))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        }
     }
 
     @Nested

@@ -7,6 +7,7 @@ import org.example.meetingscheduler.timeslot.dto.TimeslotResponseDto;
 import org.example.meetingscheduler.timeslot.dto.TimeslotUpdateRequestDto;
 import org.example.meetingscheduler.user.UserEntity;
 import org.example.meetingscheduler.user.UserRepository;
+import org.example.meetingscheduler.util.TimeValidationUtil;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -26,7 +27,7 @@ public class TimeslotService {
     public TimeslotResponseDto createTimeslot(final Long userId,
                                               final LocalDateTime startTime,
                                               final LocalDateTime endTime) {
-        validateStartAndEndTime(startTime, endTime);
+        TimeValidationUtil.validateStartAndEndTime(startTime, endTime);
         final UserEntity owner = this.userRepository.findByIdIs(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         validateNotCoveredByExistingSlot(userId, startTime, endTime);
@@ -125,21 +126,13 @@ public class TimeslotService {
         final LocalDateTime effectiveEnd = timeslotUpdateRequestDto.endTime() != null
             ? timeslotUpdateRequestDto.endTime()
             : timeslotEntity.getEndTime();
-        validateStartAndEndTime(effectiveStart, effectiveEnd);
+        TimeValidationUtil.validateStartAndEndTime(effectiveStart, effectiveEnd);
         timeslotEntity.setStartTime(effectiveStart);
         timeslotEntity.setEndTime(effectiveEnd);
         if (timeslotUpdateRequestDto.status() != null) {
             timeslotEntity.setStatus(timeslotUpdateRequestDto.status());
         }
         return this.timeslotMapper.toDto(timeslotEntity);
-    }
-
-    private void validateStartAndEndTime(final LocalDateTime startTime,
-                                         final LocalDateTime endTime) {
-        if (endTime.isAfter(startTime)) {
-            return;
-        }
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "endTime must be after startTime");
     }
 
     @Transactional

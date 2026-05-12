@@ -103,6 +103,20 @@ class MeetingServiceTest {
         }
 
         @Test
+        void throwsBadRequest_whenStartAndEndTimeSpanMidnight() {
+            // Arrange
+            final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 23, 30);
+            final LocalDateTime end = LocalDateTime.of(2026, 5, 11, 0, 30);
+            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto(1L, "Sync", null, start, end, List.of());
+
+            // Act & Assert
+            assertThatThrownBy(() -> meetingService.createMeeting(meetingCreateRequestDto))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
         void throwsUnprocessableEntity_whenOrganizerHasNoAvailability() {
             // Arrange
             final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 10, 0);

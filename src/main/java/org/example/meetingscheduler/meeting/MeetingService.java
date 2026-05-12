@@ -14,6 +14,7 @@ import org.example.meetingscheduler.timeslot.TimeslotEntity;
 import org.example.meetingscheduler.timeslot.TimeslotRepository;
 import org.example.meetingscheduler.timeslot.TimeslotService;
 import org.example.meetingscheduler.timeslot.TimeslotSpecifications;
+import org.example.meetingscheduler.util.TimeValidationUtil;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -42,9 +43,7 @@ public class MeetingService {
     public MeetingResponseDto createMeeting(final MeetingCreateRequestDto meetingCreateRequestDto) {
         final LocalDateTime startTime = meetingCreateRequestDto.startTime();
         final LocalDateTime endTime = meetingCreateRequestDto.endTime();
-        if (!endTime.isAfter(startTime)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "endTime must be after startTime");
-        }
+        TimeValidationUtil.validateStartAndEndTime(startTime, endTime);
         final TimeslotEntity organizerTimeslot = findCoveringFreeSlot(
             meetingCreateRequestDto.organizerId(), startTime, endTime, "No available timeslot for organizer");
         final List<TimeslotEntity> participantTimeslots = meetingCreateRequestDto.participantUserIds().stream()
