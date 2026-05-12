@@ -321,6 +321,21 @@ class TimeslotServiceTest {
         }
 
         @Test
+        void throwsConflict_whenTimeslotIsBooked() {
+            // Arrange
+            final TimeslotEntity bookedTimeslot = TimeslotEntity.builder()
+                .id(1L).status(SlotBookingStatus.BOOKED).build();
+            when(timeslotRepository.findById(1L)).thenReturn(Optional.of(bookedTimeslot));
+
+            // Act & Assert
+            assertThatThrownBy(() -> timeslotService.updateTimeslot(
+                    1L, new TimeslotUpdateRequestDto(null, null, SlotBookingStatus.FREE)))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
         void throwsBadRequest_whenEffectiveTimeRangeIsInvalid() {
             // Arrange
             final UserEntity userEntity = UserEntity.builder()

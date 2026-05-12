@@ -171,6 +171,19 @@ class TimeslotControllerTest {
                     .content("{\"status\":\"BOOKED\"}"))
                 .andExpect(status().isNotFound());
         }
+
+        @Test
+        void returnsConflict_whenTimeslotIsBooked() throws Exception {
+            // Arrange
+            when(timeslotService.updateTimeslot(eq(10L), any(TimeslotUpdateRequestDto.class)))
+                .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Timeslot is in use by a meeting -- cancel the meeting instead"));
+
+            // Act & Assert
+            mockMvc.perform(put("/timeslots/10")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"status\":\"FREE\"}"))
+                .andExpect(status().isConflict());
+        }
     }
 
     @Nested

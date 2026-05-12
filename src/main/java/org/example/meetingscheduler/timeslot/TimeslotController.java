@@ -76,7 +76,8 @@ public class TimeslotController {
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Timeslot updated"),
         @ApiResponse(responseCode = "400", description = "Resulting time range is invalid"),
-        @ApiResponse(responseCode = "404", description = "Timeslot not found")
+        @ApiResponse(responseCode = "404", description = "Timeslot not found"),
+        @ApiResponse(responseCode = "409", description = "Timeslot is BOOKED by a meeting")
     })
     @PutMapping("/timeslots/{id}")
     @ResponseStatus(HttpStatus.OK)

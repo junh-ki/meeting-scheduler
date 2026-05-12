@@ -132,7 +132,7 @@ Cancelling a meeting (`DELETE /meetings/{id}`) restores every party's `BOOKED` t
 | New timeslot is fully contained within an existing timeslot | `409 Conflict` |
 | User with the same email already exists | `409 Conflict` |
 | Meeting with the same organizer and time range already exists | `409 Conflict` |
-| Deleting a `BOOKED` timeslot directly (must cancel the meeting instead) | `409 Conflict` |
+| Updating or deleting a `BOOKED` timeslot directly (must cancel the meeting instead) | `409 Conflict` |
 | Organizer has no FREE slot covering the requested range | `422 Unprocessable Entity` |
 | Any participant has no FREE slot covering the requested range | `422 Unprocessable Entity` |
 
