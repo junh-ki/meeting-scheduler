@@ -1,7 +1,7 @@
 # Meeting Scheduler
 
 A REST API for scheduling meetings against user availability - a mini Doodle.
-Users manage their personal calendar by publishing free timeslots; booking a meeting automatically carves out the exact time from every participant's calendar and restores it on cancellation.
+Users manage their personal calendar by publishing free timeslots; booking a meeting automatically carves out the exact time from every participant's calendar and restores it on deletion.
 
 ## Quick Start
 
@@ -31,7 +31,7 @@ docker compose down --volumes
 
 Interactive documentation is available at **http://localhost:8080/swagger-ui.html** once the app is running.
 The OpenAPI spec is at `http://localhost:8080/v3/api-docs`.
-A Postman collection covering the full happy path (create users, publish timeslots, schedule and cancel a meeting) is included at `meeting-scheduler.postman_collection.json`.
+A Postman collection covering the full happy path (create users, publish timeslots, schedule and delete a meeting) is included at `meeting-scheduler.postman_collection.json`.
 
 Typical usage flow:
 
@@ -40,7 +40,7 @@ Typical usage flow:
 3. **Query a user's calendar** - `GET /users/{userId}/timeslots` (optionally filter by `status=FREE|BOOKED`, `from`, `to`)
 4. **Schedule a meeting** - `POST /users/{userId}/meetings` with participants and time range (userId is the organizer)
 5. **Query a user's meetings** - `GET /users/{userId}/meetings` (returns meetings where the user is organizer or participant)
-6. **Cancel a meeting** - `DELETE /users/{userId}/meetings/{id}`
+6. **Delete a meeting** - `DELETE /users/{userId}/meetings/{id}`
 
 ## Architecture
 
@@ -50,7 +50,7 @@ The project follows a standard layered architecture inside a single Spring Boot 
 meeting-scheduler/
 ├── user/           # User registration and lookup
 ├── timeslot/       # Calendar management (CRUD + overlap/merge logic)
-├── meeting/        # Meeting scheduling, cancellation, and listing
+├── meeting/        # Meeting scheduling, deletion, and listing
 └── participant/    # Join entity linking meetings to attendees
 ```
 
@@ -88,9 +88,9 @@ When a new timeslot is adjacent to or overlaps existing FREE slots for the same 
 
 When a meeting is booked, each party's covering FREE slot is split into up to three pieces: a FREE left remainder, a BOOKED slot for the exact meeting range, and a FREE right remainder. This preserves the user's partial availability around the meeting: the calendar stays accurate without any manual intervention.
 
-### Slot restoration and re-merge on meeting cancellation
+### Slot restoration and re-merge on meeting deletion
 
-Cancelling a meeting restores each BOOKED slot back to FREE and triggers the same merge logic used on creation. This means the calendar is returned to exactly the contiguous state it was in before the meeting was booked.
+Deleting a meeting restores each BOOKED slot back to FREE and triggers the same merge logic used on creation. This means the calendar is returned to exactly the contiguous state it was in before the meeting was booked.
 
 ### Concurrency design
 
@@ -171,9 +171,11 @@ Meeting:          10:00 ──────── 11:00
 After:   [09:00 ── 10:00] FREE  +  [10:00 ──────── 11:00] BOOKED  +  [11:00 ──── 12:00] FREE
 ```
 
-### Meeting Cancellation
+### Meeting Deletion
 
-`DELETE /users/{userId}/meetings/{id}` restores every party's BOOKED slot back to FREE and re-merges any adjacent FREE slots, leaving each calendar in exactly the contiguous state it was in before the meeting was booked.
+`DELETE /users/{userId}/meetings/{id}` restores every party's BOOKED slot back to FREE and re-merges any adjacent FREE slots, leaving each calendar in exactly the contiguous state it was in before the meeting was booked. Only the organizer may delete a meeting; a participant attempting to delete receives `403 Forbidden`.
+
+> **Deletion vs. cancellation:** this demo implements deletion only - the organizer removes the entire meeting and all slots are restored. A cancellation feature (where a single participant opts out without affecting the rest of the meeting) is out of scope.
 
 ### Conflict and Validation Rules
 
@@ -184,6 +186,7 @@ After:   [09:00 ── 10:00] FREE  +  [10:00 ──────── 11:00] BO
 | New timeslot overlaps with a BOOKED timeslot | `409 Conflict` |
 | User with the same email already exists | `409 Conflict` |
 | Meeting with the same organizer and time range already exists | `409 Conflict` |
+| Deleting a meeting as a participant (not the organizer) | `403 Forbidden` |
 | Updating or deleting a BOOKED timeslot directly | `409 Conflict` |
 | `startTime` and `endTime` are not on the same calendar date | `400 Bad Request` |
 | `endTime` is not after `startTime` | `400 Bad Request` |
