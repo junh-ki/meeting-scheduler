@@ -186,6 +186,29 @@ class TimeslotServiceTest {
         }
 
         @Test
+        void throwsConflict_whenNewSlotOverlapsWithBookedSlot() {
+            // Arrange: existing [10:00-11:00 BOOKED], new [09:00-12:00] wraps it
+            final LocalDateTime newStart = LocalDateTime.of(2026, 5, 10, 9, 0);
+            final LocalDateTime newEnd = LocalDateTime.of(2026, 5, 10, 12, 0);
+            final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
+            final TimeslotEntity bookedSlot = TimeslotEntity.builder()
+                .id(1L).owner(organizer)
+                .startTime(LocalDateTime.of(2026, 5, 10, 10, 0))
+                .endTime(LocalDateTime.of(2026, 5, 10, 11, 0))
+                .status(SlotBookingStatus.BOOKED).build();
+            when(userRepository.findByIdIs(1L)).thenReturn(Optional.of(organizer));
+            when(timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
+                .thenReturn(List.of()) // coversRange: BOOKED slot does not cover new range
+                .thenReturn(List.of(bookedSlot)); // overlapsOrAdjacent: BOOKED slot overlaps
+
+            // Act & Assert
+            assertThatThrownBy(() -> timeslotService.createTimeslot(1L, newStart, newEnd))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
         void throwsBadRequest_whenEndTimeEqualsStartTime() {
             // Arrange
             final LocalDateTime time = LocalDateTime.of(2026, 5, 10, 10, 0);

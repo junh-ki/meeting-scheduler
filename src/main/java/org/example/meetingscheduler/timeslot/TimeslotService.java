@@ -29,15 +29,27 @@ public class TimeslotService {
                                               final LocalDateTime endTime) {
         TimeValidationUtil.validateStartAndEndTime(startTime, endTime);
         final UserEntity owner = this.userRepository.findByIdIs(userId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+            .orElseThrow(() ->
+                new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "User not found"
+                )
+            );
         validateNotCoveredByExistingSlot(userId, startTime, endTime);
-        final List<TimeslotEntity> overlapping = this.timeslotRepository.findAll(
+        final List<TimeslotEntity> overlappingTimeslots = this.timeslotRepository.findAll(
             Specification.where(TimeslotSpecifications.hasOwnerId(userId))
                 .and(TimeslotSpecifications.overlapsOrAdjacent(startTime, endTime))
         );
-        if (!overlapping.isEmpty()) {
+        if (!overlappingTimeslots.isEmpty()) {
+            if (overlappingTimeslots.stream()
+                .anyMatch(overlappingTimeslot -> SlotBookingStatus.BOOKED == overlappingTimeslot.getStatus())) {
+                throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "New timeslot overlaps with a BOOKED timeslot"
+                );
+            }
             return this.timeslotMapper.toDto(
-                mergeInto(overlapping, startTime, endTime)
+                mergeInto(overlappingTimeslots, startTime, endTime)
             );
         }
         return this.timeslotMapper.toDto(
