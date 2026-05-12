@@ -193,7 +193,7 @@
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\n    \"organizerId\": 1,\n    \"title\": \"Kick-off Meeting\",\n    \"description\": \"For our new checkout page\",\n    \"startTime\": \"2026-05-10T12:00:00.000Z\",\n    \"endTime\": \"2026-05-10T13:00:00.000Z\",\n    \"participantUserIds\": [ 2 ]\n}\n",
+          "raw": "{\n    \"title\": \"Kick-off Meeting\",\n    \"description\": \"For our new checkout page\",\n    \"startTime\": \"2026-05-10T12:00:00.000Z\",\n    \"endTime\": \"2026-05-10T13:00:00.000Z\",\n    \"participantUserIds\": [ 2 ]\n}\n",
           "options": {
             "raw": {
               "language": "json"
@@ -201,13 +201,15 @@
           }
         },
         "url": {
-          "raw": "http://localhost:8080/meetings",
+          "raw": "http://localhost:8080/users/{{userId}}/meetings",
           "protocol": "http",
           "host": [
             "localhost"
           ],
           "port": "8080",
           "path": [
+            "users",
+            "{{userId}}",
             "meetings"
           ]
         }

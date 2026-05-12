@@ -6,7 +6,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public record MeetingCreateRequestDto(
-    @NotNull Long organizerId,
     @NotBlank String title,
     String description,
     @NotNull LocalDateTime startTime,

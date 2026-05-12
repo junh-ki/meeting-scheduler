@@ -40,23 +40,24 @@ public class MeetingService {
     }
 
     @Transactional
-    public MeetingResponseDto createMeeting(final MeetingCreateRequestDto meetingCreateRequestDto) {
+    public MeetingResponseDto createMeeting(final Long organizerId,
+                                            final MeetingCreateRequestDto meetingCreateRequestDto) {
         final LocalDateTime startTime = meetingCreateRequestDto.startTime();
         final LocalDateTime endTime = meetingCreateRequestDto.endTime();
         TimeValidationUtil.validateStartAndEndTime(startTime, endTime);
         final TimeslotEntity organizerTimeslot = findCoveringFreeSlot(
-            meetingCreateRequestDto.organizerId(), startTime, endTime, "No available timeslot for organizer");
+            organizerId, startTime, endTime, "No available timeslot for organizer");
         final List<TimeslotEntity> participantTimeslots = meetingCreateRequestDto.participantUserIds().stream()
             .map(userId -> findCoveringFreeSlot(
                 userId, startTime, endTime, "No available timeslot for participant: " + userId))
             .toList();
         if (this.meetingRepository.existsByOrganizerIdAndStartTimeAndEndTime(
-            meetingCreateRequestDto.organizerId(),
+            organizerId,
             startTime,
             endTime)) {
             log.warn(
                 "Duplicate meeting creation rejected: organizerId={}, startTime={}, endTime={}",
-                meetingCreateRequestDto.organizerId(),
+                organizerId,
                 startTime,
                 endTime
             );
@@ -76,7 +77,7 @@ public class MeetingService {
         } catch (final DataIntegrityViolationException dataIntegrityViolationException) {
             log.warn(
                 "Concurrent duplicate meeting creation rejected: organizerId={}, startTime={}, endTime={}",
-                meetingCreateRequestDto.organizerId(),
+                organizerId,
                 startTime,
                 endTime
             );

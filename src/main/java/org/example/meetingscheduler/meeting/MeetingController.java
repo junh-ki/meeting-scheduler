@@ -45,10 +45,11 @@ public class MeetingController {
         @ApiResponse(responseCode = "409", description = "Meeting with the same organizer and time range already exists"),
         @ApiResponse(responseCode = "422", description = "No covering FREE timeslot for the organizer or a participant")
     })
-    @PostMapping("/meetings")
+    @PostMapping("/users/{userId}/meetings")
     @ResponseStatus(HttpStatus.CREATED)
-    public MeetingResponseDto createMeeting(@RequestBody @Valid final MeetingCreateRequestDto meetingCreateRequestDto) {
-        return this.meetingService.createMeeting(meetingCreateRequestDto);
+    public MeetingResponseDto createMeeting(@PathVariable final Long userId,
+                                            @RequestBody @Valid final MeetingCreateRequestDto meetingCreateRequestDto) {
+        return this.meetingService.createMeeting(userId, meetingCreateRequestDto);
     }
 
     @Operation(

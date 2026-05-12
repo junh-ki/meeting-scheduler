@@ -93,10 +93,10 @@ class MeetingServiceTest {
         void throwsBadRequest_whenEndTimeNotAfterStartTime() {
             // Arrange
             final LocalDateTime time = LocalDateTime.of(2026, 5, 10, 10, 0);
-            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto(1L, "Sync", null, time, time, List.of());
+            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto("Sync", null, time, time, List.of());
 
             // Act & Assert
-            assertThatThrownBy(() -> meetingService.createMeeting(meetingCreateRequestDto))
+            assertThatThrownBy(() -> meetingService.createMeeting(1L, meetingCreateRequestDto))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
@@ -107,10 +107,10 @@ class MeetingServiceTest {
             // Arrange
             final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 23, 30);
             final LocalDateTime end = LocalDateTime.of(2026, 5, 11, 0, 30);
-            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto(1L, "Sync", null, start, end, List.of());
+            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto("Sync", null, start, end, List.of());
 
             // Act & Assert
-            assertThatThrownBy(() -> meetingService.createMeeting(meetingCreateRequestDto))
+            assertThatThrownBy(() -> meetingService.createMeeting(1L, meetingCreateRequestDto))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
@@ -123,10 +123,10 @@ class MeetingServiceTest {
             final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
             when(timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
                 .thenReturn(List.of());
-            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto(1L, "Sync", null, start, end, List.of());
+            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto("Sync", null, start, end, List.of());
 
             // Act & Assert
-            assertThatThrownBy(() -> meetingService.createMeeting(meetingCreateRequestDto))
+            assertThatThrownBy(() -> meetingService.createMeeting(1L, meetingCreateRequestDto))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
                 .isEqualTo(HttpStatusCode.valueOf(422));
@@ -143,10 +143,10 @@ class MeetingServiceTest {
             when(timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
                 .thenReturn(List.of(organizerSlot))  // organizer has availability
                 .thenReturn(List.of()); // participant has no availability
-            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto(1L, "Sync", null, start, end, List.of(99L));
+            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto("Sync", null, start, end, List.of(99L));
 
             // Act & Assert
-            assertThatThrownBy(() -> meetingService.createMeeting(meetingCreateRequestDto))
+            assertThatThrownBy(() -> meetingService.createMeeting(1L, meetingCreateRequestDto))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
                 .isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
@@ -163,10 +163,10 @@ class MeetingServiceTest {
             when(timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
                 .thenReturn(List.of(organizerSlot));
             when(meetingRepository.existsByOrganizerIdAndStartTimeAndEndTime(1L, start, end)).thenReturn(true);
-            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto(1L, "Sync", null, start, end, List.of());
+            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto("Sync", null, start, end, List.of());
 
             // Act & Assert
-            assertThatThrownBy(() -> meetingService.createMeeting(meetingCreateRequestDto))
+            assertThatThrownBy(() -> meetingService.createMeeting(1L, meetingCreateRequestDto))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);
@@ -184,10 +184,10 @@ class MeetingServiceTest {
                 .thenReturn(List.of(organizerSlot));
             when(meetingRepository.save(any(MeetingEntity.class)))
                 .thenThrow(new DataIntegrityViolationException("unique constraint"));
-            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto(1L, "Sync", null, start, end, List.of());
+            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto("Sync", null, start, end, List.of());
 
             // Act & Assert
-            assertThatThrownBy(() -> meetingService.createMeeting(meetingCreateRequestDto))
+            assertThatThrownBy(() -> meetingService.createMeeting(1L, meetingCreateRequestDto))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);
@@ -219,10 +219,10 @@ class MeetingServiceTest {
             when(meetingRepository.save(any(MeetingEntity.class))).thenReturn(savedMeetingEntity);
             when(participantRepository.saveAll(any())).thenReturn(List.of(savedParticipantEntity));
             when(meetingMapper.toDto(savedMeetingEntity)).thenReturn(expected);
-            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto(1L, "Sync", "Weekly", start, end, List.of(2L));
+            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto("Sync", "Weekly", start, end, List.of(2L));
 
             // Act
-            final MeetingResponseDto meetingResponseDto = meetingService.createMeeting(meetingCreateRequestDto);
+            final MeetingResponseDto meetingResponseDto = meetingService.createMeeting(1L, meetingCreateRequestDto);
 
             // Assert
             assertThat(meetingResponseDto).isEqualTo(expected);
@@ -251,10 +251,10 @@ class MeetingServiceTest {
             when(meetingRepository.save(any(MeetingEntity.class))).thenReturn(savedMeetingEntity);
             when(participantRepository.saveAll(any())).thenReturn(List.of());
             when(meetingMapper.toDto(savedMeetingEntity)).thenReturn(expected);
-            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto(1L, "Sync", null, meetingStart, end, List.of());
+            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto("Sync", null, meetingStart, end, List.of());
 
             // Act
-            final MeetingResponseDto meetingResponseDto = meetingService.createMeeting(meetingCreateRequestDto);
+            final MeetingResponseDto meetingResponseDto = meetingService.createMeeting(1L, meetingCreateRequestDto);
 
             // Assert
             assertThat(meetingResponseDto).isEqualTo(expected);
@@ -283,10 +283,10 @@ class MeetingServiceTest {
             when(meetingRepository.save(any(MeetingEntity.class))).thenReturn(savedMeeting);
             when(participantRepository.saveAll(any())).thenReturn(List.of());
             when(meetingMapper.toDto(savedMeeting)).thenReturn(expected);
-            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto(1L, "Sync", null, start, meetingEnd, List.of());
+            final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto("Sync", null, start, meetingEnd, List.of());
 
             // Act
-            final MeetingResponseDto meetingResponseDto = meetingService.createMeeting(meetingCreateRequestDto);
+            final MeetingResponseDto meetingResponseDto = meetingService.createMeeting(1L, meetingCreateRequestDto);
 
             // Assert
             assertThat(meetingResponseDto).isEqualTo(expected);

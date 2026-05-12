@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
@@ -38,7 +39,7 @@ class MeetingControllerTest {
     private MockMvc mockMvc;
 
     private static final String VALID_BODY =
-        "{\"organizerId\":1,\"title\":\"Sync\",\"startTime\":\"2026-05-10T10:00:00\",\"endTime\":\"2026-05-10T11:00:00\",\"participantUserIds\":[2]}";
+        "{\"title\":\"Sync\",\"startTime\":\"2026-05-10T10:00:00\",\"endTime\":\"2026-05-10T11:00:00\",\"participantUserIds\":[2]}";
 
     @Nested
     class getMeetings {
@@ -90,10 +91,10 @@ class MeetingControllerTest {
                 100L, "Sync", "Weekly", start, end,
                 new UserResponseDto(1L, "Alice", "alice@example.com"),
                 List.of(new ParticipantResponseDto(1L, new UserResponseDto(2L, "Bob", "bob@example.com"))));
-            when(meetingService.createMeeting(any(MeetingCreateRequestDto.class))).thenReturn(meetingResponseDto);
+            when(meetingService.createMeeting(eq(1L), any(MeetingCreateRequestDto.class))).thenReturn(meetingResponseDto);
 
             // Act & Assert
-            mockMvc.perform(post("/meetings")
+            mockMvc.perform(post("/users/1/meetings")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(VALID_BODY))
                 .andExpect(status().isCreated())
@@ -104,58 +105,49 @@ class MeetingControllerTest {
         }
 
         @Test
-        void returnsBadRequest_whenOrganizerIdIsNull() throws Exception {
-            // Arrange & Act & Assert
-            mockMvc.perform(post("/meetings")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"title\":\"Sync\",\"startTime\":\"2026-05-10T10:00:00\",\"endTime\":\"2026-05-10T11:00:00\",\"participantUserIds\":[]}"))
-                .andExpect(status().isBadRequest());
-        }
-
-        @Test
         void returnsBadRequest_whenTitleIsBlank() throws Exception {
             // Arrange & Act & Assert
-            mockMvc.perform(post("/meetings")
+            mockMvc.perform(post("/users/1/meetings")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"organizerId\":1,\"title\":\"\",\"startTime\":\"2026-05-10T10:00:00\",\"endTime\":\"2026-05-10T11:00:00\",\"participantUserIds\":[]}"))
+                    .content("{\"title\":\"\",\"startTime\":\"2026-05-10T10:00:00\",\"endTime\":\"2026-05-10T11:00:00\",\"participantUserIds\":[]}"))
                 .andExpect(status().isBadRequest());
         }
 
         @Test
         void returnsBadRequest_whenStartTimeIsNull() throws Exception {
             // Arrange & Act & Assert
-            mockMvc.perform(post("/meetings")
+            mockMvc.perform(post("/users/1/meetings")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"organizerId\":1,\"title\":\"Sync\",\"endTime\":\"2026-05-10T11:00:00\",\"participantUserIds\":[]}"))
+                    .content("{\"title\":\"Sync\",\"endTime\":\"2026-05-10T11:00:00\",\"participantUserIds\":[]}"))
                 .andExpect(status().isBadRequest());
         }
 
         @Test
         void returnsBadRequest_whenEndTimeIsNull() throws Exception {
             // Arrange & Act & Assert
-            mockMvc.perform(post("/meetings")
+            mockMvc.perform(post("/users/1/meetings")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"organizerId\":1,\"title\":\"Sync\",\"startTime\":\"2026-05-10T10:00:00\",\"participantUserIds\":[]}"))
+                    .content("{\"title\":\"Sync\",\"startTime\":\"2026-05-10T10:00:00\",\"participantUserIds\":[]}"))
                 .andExpect(status().isBadRequest());
         }
 
         @Test
         void returnsBadRequest_whenParticipantUserIdsIsNull() throws Exception {
             // Arrange & Act & Assert
-            mockMvc.perform(post("/meetings")
+            mockMvc.perform(post("/users/1/meetings")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"organizerId\":1,\"title\":\"Sync\",\"startTime\":\"2026-05-10T10:00:00\",\"endTime\":\"2026-05-10T11:00:00\"}"))
+                    .content("{\"title\":\"Sync\",\"startTime\":\"2026-05-10T10:00:00\",\"endTime\":\"2026-05-10T11:00:00\"}"))
                 .andExpect(status().isBadRequest());
         }
 
         @Test
         void returnsUnprocessableEntity_whenNoAvailabilityCoversRange() throws Exception {
             // Arrange
-            when(meetingService.createMeeting(any(MeetingCreateRequestDto.class)))
+            when(meetingService.createMeeting(eq(1L), any(MeetingCreateRequestDto.class)))
                 .thenThrow(new ResponseStatusException(HttpStatusCode.valueOf(422), "No available timeslot covers the requested range"));
 
             // Act & Assert
-            mockMvc.perform(post("/meetings")
+            mockMvc.perform(post("/users/1/meetings")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(VALID_BODY))
                 .andExpect(status().is(422));
@@ -164,11 +156,11 @@ class MeetingControllerTest {
         @Test
         void returnsUnprocessableEntity_whenParticipantHasNoAvailability() throws Exception {
             // Arrange
-            when(meetingService.createMeeting(any(MeetingCreateRequestDto.class)))
+            when(meetingService.createMeeting(eq(1L), any(MeetingCreateRequestDto.class)))
                 .thenThrow(new ResponseStatusException(HttpStatusCode.valueOf(422), "No available timeslot for participant: 2"));
 
             // Act & Assert
-            mockMvc.perform(post("/meetings")
+            mockMvc.perform(post("/users/1/meetings")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(VALID_BODY))
                 .andExpect(status().is(422));
@@ -177,11 +169,11 @@ class MeetingControllerTest {
         @Test
         void returnsConflict_whenMeetingAlreadyExists() throws Exception {
             // Arrange
-            when(meetingService.createMeeting(any(MeetingCreateRequestDto.class)))
+            when(meetingService.createMeeting(eq(1L), any(MeetingCreateRequestDto.class)))
                 .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Meeting already exists for this time range"));
 
             // Act & Assert
-            mockMvc.perform(post("/meetings")
+            mockMvc.perform(post("/users/1/meetings")
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(VALID_BODY))
                 .andExpect(status().isConflict());
