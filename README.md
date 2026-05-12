@@ -1,9 +1,3 @@
-# TODO
-
-1. Postman collection
-
----
-
 # Meeting Scheduler
 
 A REST API for scheduling meetings against organizer availability. Organizers publish free timeslots; booking a meeting automatically splits or shrinks the covering slot so the remaining availability stays accurate.
