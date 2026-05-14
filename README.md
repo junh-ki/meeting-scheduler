@@ -51,7 +51,9 @@ meeting-scheduler/
 ├── user/           # User registration and lookup
 ├── timeslot/       # Calendar management (CRUD + overlap/merge logic)
 ├── meeting/        # Meeting scheduling, deletion, and listing
-└── participant/    # Join entity linking meetings to attendees
+├── participant/    # Join entity linking meetings to attendees
+├── exception/      # Domain exception types + GlobalExceptionHandler
+└── util/           # Shared utilities (time validation)
 ```
 
 Each domain package contains:
@@ -64,6 +66,9 @@ Each domain package contains:
 | `*Entity` | JPA-managed table |
 | `*Mapper` | MapStruct, entity to DTO conversion |
 | `dto/` | Request and response records with Bean Validation constraints |
+
+`exception/GlobalExceptionHandler` (`@RestControllerAdvice`) centralizes all error responses.
+Services throw typed domain exceptions (`NotFoundException`, `ConflictException`, `ForbiddenException`, `BadRequestException`, `UnprocessableEntityException`) with no HTTP dependency; the handler maps each type to its status code and serializes a uniform `{"status": …, "message": …}` body.
 
 **Tech stack:** Java 21 · Spring Boot 4 · Spring Data JPA · PostgreSQL · Flyway · MapStruct · Lombok · springdoc-openapi
 

@@ -3,6 +3,10 @@ package org.example.meetingscheduler.timeslot;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.example.meetingscheduler.exception.BadRequestException;
+import org.example.meetingscheduler.exception.ConflictException;
+import org.example.meetingscheduler.exception.ForbiddenException;
+import org.example.meetingscheduler.exception.NotFoundException;
 import org.example.meetingscheduler.timeslot.dto.TimeslotResponseDto;
 import org.example.meetingscheduler.timeslot.dto.TimeslotUpdateRequestDto;
 import org.example.meetingscheduler.user.UserEntity;
@@ -17,8 +21,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -77,9 +79,7 @@ class TimeslotServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.createTimeslot(1L, start, end))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.CONFLICT);
+                .isInstanceOf(ConflictException.class);
         }
 
         @Test
@@ -99,9 +99,7 @@ class TimeslotServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.createTimeslot(1L, newStart, newEnd))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.CONFLICT);
+                .isInstanceOf(ConflictException.class);
         }
 
         @Test
@@ -203,9 +201,7 @@ class TimeslotServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.createTimeslot(1L, newStart, newEnd))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.CONFLICT);
+                .isInstanceOf(ConflictException.class);
         }
 
         @Test
@@ -215,9 +211,7 @@ class TimeslotServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.createTimeslot(1L, time, time))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
+                .isInstanceOf(BadRequestException.class);
         }
 
         @Test
@@ -228,9 +222,7 @@ class TimeslotServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.createTimeslot(1L, start, end))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
+                .isInstanceOf(BadRequestException.class);
         }
 
         @Test
@@ -241,9 +233,7 @@ class TimeslotServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.createTimeslot(1L, start, end))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
+                .isInstanceOf(BadRequestException.class);
         }
     }
 
@@ -351,9 +341,7 @@ class TimeslotServiceTest {
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.updateTimeslot(
                     1L, 99L, new TimeslotUpdateRequestDto(null, null, SlotBookingStatus.BOOKED)))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.NOT_FOUND);
+                .isInstanceOf(NotFoundException.class);
         }
 
         @Test
@@ -367,9 +355,7 @@ class TimeslotServiceTest {
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.updateTimeslot(
                     2L, 1L, new TimeslotUpdateRequestDto(null, null, SlotBookingStatus.BOOKED)))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.FORBIDDEN);
+                .isInstanceOf(ForbiddenException.class);
         }
 
         @Test
@@ -383,9 +369,7 @@ class TimeslotServiceTest {
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.updateTimeslot(
                     1L, 1L, new TimeslotUpdateRequestDto(null, null, SlotBookingStatus.FREE)))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.CONFLICT);
+                .isInstanceOf(ConflictException.class);
         }
 
         @Test
@@ -405,9 +389,7 @@ class TimeslotServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.updateTimeslot(1L, 1L, timeslotUpdateRequestDto))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
+                .isInstanceOf(BadRequestException.class);
         }
     }
 
@@ -439,9 +421,7 @@ class TimeslotServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.deleteTimeslot(1L, 99L))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.NOT_FOUND);
+                .isInstanceOf(NotFoundException.class);
         }
 
         @Test
@@ -457,9 +437,7 @@ class TimeslotServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.deleteTimeslot(2L, 1L))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.FORBIDDEN);
+                .isInstanceOf(ForbiddenException.class);
             verify(timeslotRepository, never()).deleteById(any());
         }
 
@@ -476,9 +454,7 @@ class TimeslotServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.deleteTimeslot(1L, 10L))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.CONFLICT);
+                .isInstanceOf(ConflictException.class);
             verify(timeslotRepository, never()).deleteById(any());
         }
     }

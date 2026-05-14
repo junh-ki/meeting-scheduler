@@ -2,6 +2,10 @@ package org.example.meetingscheduler.timeslot;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import org.example.meetingscheduler.exception.BadRequestException;
+import org.example.meetingscheduler.exception.ConflictException;
+import org.example.meetingscheduler.exception.ForbiddenException;
+import org.example.meetingscheduler.exception.NotFoundException;
 import org.example.meetingscheduler.timeslot.dto.TimeslotResponseDto;
 import org.example.meetingscheduler.timeslot.dto.TimeslotUpdateRequestDto;
 import org.example.meetingscheduler.user.dto.UserResponseDto;
@@ -9,11 +13,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.server.ResponseStatusException;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -61,7 +63,7 @@ class TimeslotControllerTest {
         void returnsConflict_whenTimeslotAlreadyExists() throws Exception {
             // Arrange
             when(timeslotService.createTimeslot(any(), any(), any()))
-                .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Timeslot already exists for this time range"));
+                .thenThrow(new ConflictException("Timeslot already exists for this time range"));
 
             // Act & Assert
             mockMvc.perform(post("/users/1/timeslots")
@@ -74,7 +76,7 @@ class TimeslotControllerTest {
         void returnsBadRequest_whenServiceRejectsTimeRange() throws Exception {
             // Arrange
             when(timeslotService.createTimeslot(any(), any(), any()))
-                .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "endTime must be after startTime"));
+                .thenThrow(new BadRequestException("endTime must be after startTime"));
 
             // Act & Assert
             mockMvc.perform(post("/users/1/timeslots")
@@ -163,7 +165,7 @@ class TimeslotControllerTest {
         void returnsNotFound_whenTimeslotDoesNotExist() throws Exception {
             // Arrange
             when(timeslotService.updateTimeslot(eq(1L), eq(99L), any(TimeslotUpdateRequestDto.class)))
-                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Timeslot not found"));
+                .thenThrow(new NotFoundException("Timeslot not found"));
 
             // Act & Assert
             mockMvc.perform(put("/users/1/timeslots/99")
@@ -176,7 +178,7 @@ class TimeslotControllerTest {
         void returnsConflict_whenTimeslotIsBooked() throws Exception {
             // Arrange
             when(timeslotService.updateTimeslot(eq(1L), eq(10L), any(TimeslotUpdateRequestDto.class)))
-                .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Timeslot is in use by a meeting -- cancel the meeting instead"));
+                .thenThrow(new ConflictException("Timeslot is in use by a meeting -- delete the meeting instead"));
 
             // Act & Assert
             mockMvc.perform(put("/users/1/timeslots/10")
@@ -189,7 +191,7 @@ class TimeslotControllerTest {
         void returnsForbidden_whenTimeslotBelongsToAnotherUser() throws Exception {
             // Arrange
             when(timeslotService.updateTimeslot(eq(2L), eq(1L), any(TimeslotUpdateRequestDto.class)))
-                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Timeslot does not belong to this user"));
+                .thenThrow(new ForbiddenException("Timeslot does not belong to this user"));
 
             // Act & Assert
             mockMvc.perform(put("/users/2/timeslots/1")
@@ -212,7 +214,7 @@ class TimeslotControllerTest {
         @Test
         void returnsNotFound_whenTimeslotDoesNotExist() throws Exception {
             // Arrange
-            doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Timeslot not found"))
+            doThrow(new NotFoundException("Timeslot not found"))
                 .when(timeslotService).deleteTimeslot(1L, 99L);
 
             // Act & Assert
@@ -223,7 +225,7 @@ class TimeslotControllerTest {
         @Test
         void returnsConflict_whenTimeslotIsBooked() throws Exception {
             // Arrange
-            doThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Timeslot is in use by a meeting -- cancel the meeting instead"))
+            doThrow(new ConflictException("Timeslot is in use by a meeting -- delete the meeting instead"))
                 .when(timeslotService).deleteTimeslot(1L, 10L);
 
             // Act & Assert
@@ -234,7 +236,7 @@ class TimeslotControllerTest {
         @Test
         void returnsForbidden_whenTimeslotBelongsToAnotherUser() throws Exception {
             // Arrange
-            doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Timeslot does not belong to this user"))
+            doThrow(new ForbiddenException("Timeslot does not belong to this user"))
                 .when(timeslotService).deleteTimeslot(2L, 1L);
 
             // Act & Assert

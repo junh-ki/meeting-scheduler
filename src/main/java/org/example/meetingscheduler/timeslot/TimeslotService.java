@@ -3,6 +3,9 @@ package org.example.meetingscheduler.timeslot;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.example.meetingscheduler.exception.ConflictException;
+import org.example.meetingscheduler.exception.ForbiddenException;
+import org.example.meetingscheduler.exception.NotFoundException;
 import org.example.meetingscheduler.timeslot.dto.TimeslotResponseDto;
 import org.example.meetingscheduler.timeslot.dto.TimeslotUpdateRequestDto;
 import org.example.meetingscheduler.user.UserEntity;
@@ -10,10 +13,8 @@ import org.example.meetingscheduler.user.UserRepository;
 import org.example.meetingscheduler.util.TimeValidationUtil;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -29,12 +30,7 @@ public class TimeslotService {
                                               final LocalDateTime endTime) {
         TimeValidationUtil.validateStartAndEndTime(startTime, endTime);
         final UserEntity owner = this.userRepository.findByIdIs(userId)
-            .orElseThrow(() ->
-                new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "User not found"
-                )
-            );
+            .orElseThrow(() -> new NotFoundException("User not found"));
         validateNotCoveredByExistingSlot(userId, startTime, endTime);
         final List<TimeslotEntity> overlappingTimeslots = this.timeslotRepository.findAll(
             Specification.where(TimeslotSpecifications.hasOwnerId(userId))
@@ -43,10 +39,7 @@ public class TimeslotService {
         if (!overlappingTimeslots.isEmpty()) {
             if (overlappingTimeslots.stream()
                 .anyMatch(overlappingTimeslot -> SlotBookingStatus.BOOKED == overlappingTimeslot.getStatus())) {
-                throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "New timeslot overlaps with a BOOKED timeslot"
-                );
+                throw new ConflictException("New timeslot overlaps with a BOOKED timeslot");
             }
             return this.timeslotMapper.toDto(
                 mergeInto(overlappingTimeslots, startTime, endTime)
@@ -75,10 +68,7 @@ public class TimeslotService {
             ).stream()
             .findFirst()
             .ifPresent(coveringTimeslot -> {
-                throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "An existing timeslot already covers this time range"
-                );
+                throw new ConflictException("An existing timeslot already covers this time range");
             });
     }
 
@@ -126,20 +116,12 @@ public class TimeslotService {
                                               final Long id,
                                               final TimeslotUpdateRequestDto timeslotUpdateRequestDto) {
         final TimeslotEntity timeslotEntity = this.timeslotRepository.findById(id)
-            .orElseThrow(() ->
-                new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Timeslot not found"
-                )
-            );
+            .orElseThrow(() -> new NotFoundException("Timeslot not found"));
         if (!timeslotEntity.getOwner().getId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Timeslot does not belong to this user");
+            throw new ForbiddenException("Timeslot does not belong to this user");
         }
         if (SlotBookingStatus.BOOKED == timeslotEntity.getStatus()) {
-            throw new ResponseStatusException(
-                HttpStatus.CONFLICT,
-                "Timeslot is in use by a meeting -- cancel the meeting instead"
-            );
+            throw new ConflictException("Timeslot is in use by a meeting -- delete the meeting instead");
         }
         final LocalDateTime effectiveStart = timeslotUpdateRequestDto.startTime() != null
             ? timeslotUpdateRequestDto.startTime()
@@ -160,20 +142,12 @@ public class TimeslotService {
     public void deleteTimeslot(final Long userId,
                                final Long id) {
         final TimeslotEntity timeslotEntity = this.timeslotRepository.findById(id)
-            .orElseThrow(() ->
-                new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Timeslot not found"
-                )
-            );
+            .orElseThrow(() -> new NotFoundException("Timeslot not found"));
         if (!timeslotEntity.getOwner().getId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Timeslot does not belong to this user");
+            throw new ForbiddenException("Timeslot does not belong to this user");
         }
         if (SlotBookingStatus.BOOKED == timeslotEntity.getStatus()) {
-            throw new ResponseStatusException(
-                HttpStatus.CONFLICT,
-                "Timeslot is in use by a meeting -- cancel the meeting instead"
-            );
+            throw new ConflictException("Timeslot is in use by a meeting -- delete the meeting instead");
         }
         this.timeslotRepository.deleteById(id);
     }

@@ -2,6 +2,7 @@ package org.example.meetingscheduler.user;
 
 import java.util.Collections;
 import java.util.List;
+import org.example.meetingscheduler.exception.ConflictException;
 import org.example.meetingscheduler.user.dto.UserRequestDto;
 import org.example.meetingscheduler.user.dto.UserResponseDto;
 import org.junit.jupiter.api.Nested;
@@ -11,8 +12,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -89,9 +88,7 @@ class UserServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> userService.createUser(new UserRequestDto("Alice", "alice@example.com")))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.CONFLICT);
+                .isInstanceOf(ConflictException.class);
         }
 
         @Test
@@ -104,9 +101,7 @@ class UserServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> userService.createUser(new UserRequestDto("Alice", "alice@example.com")))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.CONFLICT);
+                .isInstanceOf(ConflictException.class);
         }
     }
 }

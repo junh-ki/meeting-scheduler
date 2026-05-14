@@ -14,13 +14,14 @@ import org.example.meetingscheduler.timeslot.TimeslotEntity;
 import org.example.meetingscheduler.timeslot.TimeslotRepository;
 import org.example.meetingscheduler.timeslot.TimeslotService;
 import org.example.meetingscheduler.timeslot.TimeslotSpecifications;
+import org.example.meetingscheduler.exception.ConflictException;
+import org.example.meetingscheduler.exception.ForbiddenException;
+import org.example.meetingscheduler.exception.NotFoundException;
+import org.example.meetingscheduler.exception.UnprocessableEntityException;
 import org.example.meetingscheduler.util.TimeValidationUtil;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Slf4j
 @Service
@@ -61,10 +62,7 @@ public class MeetingService {
                 startTime,
                 endTime
             );
-            throw new ResponseStatusException(
-                HttpStatus.CONFLICT,
-                "Meeting already exists for this time range"
-            );
+            throw new ConflictException("Meeting already exists for this time range");
         }
         try {
             return this.meetingMapper.toDto(
@@ -81,10 +79,7 @@ public class MeetingService {
                 startTime,
                 endTime
             );
-            throw new ResponseStatusException(
-                HttpStatus.CONFLICT,
-                "Meeting already exists for this time range"
-            );
+            throw new ConflictException("Meeting already exists for this time range");
         }
     }
 
@@ -98,12 +93,7 @@ public class MeetingService {
                 .and(TimeslotSpecifications.coversRange(startTime, endTime))
             ).stream()
             .findFirst()
-            .orElseThrow(() ->
-                new ResponseStatusException(
-                    HttpStatusCode.valueOf(422),
-                    errorMessage
-                )
-            );
+            .orElseThrow(() -> new UnprocessableEntityException(errorMessage));
     }
 
     private MeetingEntity createMeetingWithParticipants(final MeetingCreateRequestDto meetingCreateRequestDto,
@@ -146,9 +136,9 @@ public class MeetingService {
     public void deleteMeeting(final Long userId,
                               final Long id) {
         final MeetingEntity meetingEntity = this.meetingRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Meeting not found"));
+            .orElseThrow(() -> new NotFoundException("Meeting not found"));
         if (!meetingEntity.getOrganizer().getId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Meeting does not belong to this user");
+            throw new ForbiddenException("Meeting does not belong to this user");
         }
         final LocalDateTime startTime = meetingEntity.getStartTime();
         final LocalDateTime endTime = meetingEntity.getEndTime();

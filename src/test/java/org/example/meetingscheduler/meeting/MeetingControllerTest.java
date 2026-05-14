@@ -3,6 +3,10 @@ package org.example.meetingscheduler.meeting;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import org.example.meetingscheduler.exception.ConflictException;
+import org.example.meetingscheduler.exception.ForbiddenException;
+import org.example.meetingscheduler.exception.NotFoundException;
+import org.example.meetingscheduler.exception.UnprocessableEntityException;
 import org.example.meetingscheduler.meeting.dto.MeetingCreateRequestDto;
 import org.example.meetingscheduler.meeting.dto.MeetingResponseDto;
 import org.example.meetingscheduler.participant.ParticipantResponseDto;
@@ -11,12 +15,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.server.ResponseStatusException;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -144,7 +145,7 @@ class MeetingControllerTest {
         void returnsUnprocessableEntity_whenNoAvailabilityCoversRange() throws Exception {
             // Arrange
             when(meetingService.createMeeting(eq(1L), any(MeetingCreateRequestDto.class)))
-                .thenThrow(new ResponseStatusException(HttpStatusCode.valueOf(422), "No available timeslot covers the requested range"));
+                .thenThrow(new UnprocessableEntityException("No available timeslot covers the requested range"));
 
             // Act & Assert
             mockMvc.perform(post("/users/1/meetings")
@@ -157,7 +158,7 @@ class MeetingControllerTest {
         void returnsUnprocessableEntity_whenParticipantHasNoAvailability() throws Exception {
             // Arrange
             when(meetingService.createMeeting(eq(1L), any(MeetingCreateRequestDto.class)))
-                .thenThrow(new ResponseStatusException(HttpStatusCode.valueOf(422), "No available timeslot for participant: 2"));
+                .thenThrow(new UnprocessableEntityException("No available timeslot for participant: 2"));
 
             // Act & Assert
             mockMvc.perform(post("/users/1/meetings")
@@ -170,7 +171,7 @@ class MeetingControllerTest {
         void returnsConflict_whenMeetingAlreadyExists() throws Exception {
             // Arrange
             when(meetingService.createMeeting(eq(1L), any(MeetingCreateRequestDto.class)))
-                .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Meeting already exists for this time range"));
+                .thenThrow(new ConflictException("Meeting already exists for this time range"));
 
             // Act & Assert
             mockMvc.perform(post("/users/1/meetings")
@@ -196,7 +197,7 @@ class MeetingControllerTest {
         @Test
         void returnsNotFound_whenMeetingDoesNotExist() throws Exception {
             // Arrange
-            doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Meeting not found"))
+            doThrow(new NotFoundException("Meeting not found"))
                 .when(meetingService).deleteMeeting(1L, 99L);
 
             // Act & Assert
@@ -207,7 +208,7 @@ class MeetingControllerTest {
         @Test
         void returnsForbidden_whenUserIsNotOrganizer() throws Exception {
             // Arrange
-            doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Meeting does not belong to this user"))
+            doThrow(new ForbiddenException("Meeting does not belong to this user"))
                 .when(meetingService).deleteMeeting(2L, 1L);
 
             // Act & Assert

@@ -1,9 +1,8 @@
 package org.example.meetingscheduler.util;
 
 import java.time.LocalDateTime;
+import org.example.meetingscheduler.exception.BadRequestException;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,9 +27,7 @@ class TimeValidationUtilTest {
 
         // Act & Assert
         assertThatThrownBy(() -> TimeValidationUtil.validateStartAndEndTime(start, start))
-            .isInstanceOf(ResponseStatusException.class)
-            .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
-            .isEqualTo(HttpStatus.BAD_REQUEST);
+            .isInstanceOf(BadRequestException.class);
     }
 
     @Test
@@ -41,9 +38,7 @@ class TimeValidationUtilTest {
 
         // Act & Assert
         assertThatThrownBy(() -> TimeValidationUtil.validateStartAndEndTime(start, end))
-            .isInstanceOf(ResponseStatusException.class)
-            .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
-            .isEqualTo(HttpStatus.BAD_REQUEST);
+            .isInstanceOf(BadRequestException.class);
     }
 
     @Test
@@ -54,8 +49,6 @@ class TimeValidationUtilTest {
 
         // Act & Assert
         assertThatThrownBy(() -> TimeValidationUtil.validateStartAndEndTime(start, end))
-            .isInstanceOf(ResponseStatusException.class)
-            .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
-            .isEqualTo(HttpStatus.BAD_REQUEST);
+            .isInstanceOf(BadRequestException.class);
     }
 }

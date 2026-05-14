@@ -4,6 +4,11 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import org.example.meetingscheduler.exception.BadRequestException;
+import org.example.meetingscheduler.exception.ConflictException;
+import org.example.meetingscheduler.exception.ForbiddenException;
+import org.example.meetingscheduler.exception.NotFoundException;
+import org.example.meetingscheduler.exception.UnprocessableEntityException;
 import org.example.meetingscheduler.meeting.dto.MeetingCreateRequestDto;
 import org.example.meetingscheduler.meeting.dto.MeetingResponseDto;
 import org.example.meetingscheduler.participant.ParticipantEntity;
@@ -24,9 +29,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.web.server.ResponseStatusException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -97,9 +99,7 @@ class MeetingServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> meetingService.createMeeting(1L, meetingCreateRequestDto))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
+                .isInstanceOf(BadRequestException.class);
         }
 
         @Test
@@ -111,9 +111,7 @@ class MeetingServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> meetingService.createMeeting(1L, meetingCreateRequestDto))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
+                .isInstanceOf(BadRequestException.class);
         }
 
         @Test
@@ -127,9 +125,7 @@ class MeetingServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> meetingService.createMeeting(1L, meetingCreateRequestDto))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
-                .isEqualTo(HttpStatusCode.valueOf(422));
+                .isInstanceOf(UnprocessableEntityException.class);
         }
 
         @Test
@@ -147,9 +143,7 @@ class MeetingServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> meetingService.createMeeting(1L, meetingCreateRequestDto))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
-                .isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
+                .isInstanceOf(UnprocessableEntityException.class);
         }
 
         @Test
@@ -167,9 +161,7 @@ class MeetingServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> meetingService.createMeeting(1L, meetingCreateRequestDto))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
-                .isEqualTo(HttpStatus.CONFLICT);
+                .isInstanceOf(ConflictException.class);
         }
 
         @Test
@@ -188,9 +180,7 @@ class MeetingServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> meetingService.createMeeting(1L, meetingCreateRequestDto))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
-                .isEqualTo(HttpStatus.CONFLICT);
+                .isInstanceOf(ConflictException.class);
         }
 
         @Test
@@ -305,9 +295,7 @@ class MeetingServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> meetingService.deleteMeeting(1L, 99L))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
-                .isEqualTo(HttpStatus.NOT_FOUND);
+                .isInstanceOf(NotFoundException.class);
             verify(timeslotRepository, never()).findByOwnerIdAndStartTimeAndEndTimeAndStatus(any(), any(), any(), any());
         }
 
@@ -324,9 +312,7 @@ class MeetingServiceTest {
 
             // Act & Assert
             assertThatThrownBy(() -> meetingService.deleteMeeting(2L, 100L))
-                .isInstanceOf(ResponseStatusException.class)
-                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode())
-                .isEqualTo(HttpStatus.FORBIDDEN);
+                .isInstanceOf(ForbiddenException.class);
             verify(timeslotRepository, never()).findByOwnerIdAndStartTimeAndEndTimeAndStatus(any(), any(), any(), any());
         }
 
