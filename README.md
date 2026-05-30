@@ -5,7 +5,7 @@ Users manage their personal calendar by publishing free timeslots; booking a mee
 
 ## Quick Start
 
-**Prerequisites:** Java 21, Maven, Docker.
+**Prerequisites:** Java 21, Maven, Docker (runs Postgres + Redis).
 
 ```bash
 ./run.sh
@@ -52,6 +52,8 @@ meeting-scheduler/
 ├── timeslot/       # Calendar management (CRUD + overlap/merge logic)
 ├── meeting/        # Meeting scheduling, deletion, and listing
 ├── participant/    # Join entity linking meetings to attendees
+├── notification/   # Async event notifications (entities, producers, consumers, Feign client)
+├── redis/          # RedisTemplate configuration and queue key constants
 ├── exception/      # Domain exception types + GlobalExceptionHandler
 └── util/           # Shared utilities (time validation)
 ```
@@ -70,13 +72,15 @@ Each domain package contains:
 `exception/GlobalExceptionHandler` (`@RestControllerAdvice`) centralizes all error responses.
 Services throw typed domain exceptions (`NotFoundException`, `ConflictException`, `ForbiddenException`, `BadRequestException`, `UnprocessableEntityException`) with no HTTP dependency; the handler maps each type to its status code and serializes a uniform `{"status": …, "message": …}` body.
 
-**Tech stack:** Java 21 · Spring Boot 4 · Spring Data JPA · PostgreSQL · Flyway · MapStruct · Lombok · springdoc-openapi
+**Tech stack:** Java 21 · Spring Boot 4 · Spring Data JPA · PostgreSQL · Flyway · Redis · Spring Data Redis · OpenFeign · Resilience4j · MapStruct · Lombok · springdoc-openapi
 
 **Database schema:**
 
 ```
 app_user ──< timeslot
 app_user ──< meeting ──< participant >── app_user
+meeting  ──< schedule_notification >── app_user
+         ──< delete_notification   >── app_user
 ```
 
 ## Design Decisions
@@ -92,6 +96,14 @@ When a new timeslot is adjacent to or overlaps existing FREE slots for the same 
 ### Slot splitting on meeting booking
 
 When a meeting is booked, each party's covering FREE slot is split into up to three pieces: a FREE left remainder, a BOOKED slot for the exact meeting range, and a FREE right remainder. This preserves the user's partial availability around the meeting: the calendar stays accurate without any manual intervention.
+
+### Async at-least-once notification delivery
+
+When a meeting is created or deleted, a `PENDING` notification row is written to the database **in the same transaction** as the business operation. This ensures the intent to notify is never lost even if the application crashes immediately after. After the transaction commits, the service makes a best-effort enqueue into a Redis sorted set so consumers can process the notification immediately.
+
+Scheduled producers run every 10 seconds and re-enqueue any rows that are still `PENDING`, acting as a recovery mechanism for Redis outages or missed fast-path enqueues. Consumers process each notification concurrently via a thread pool, mark it `COMPLETED` on success, or `FAILED` (with the error message) if the Feign call fails after retries. Resilience4j retries the Feign call up to three times with exponential backoff before giving up.
+
+This pattern (write intent to DB first, enqueue second, producer as safety net) guarantees at-least-once delivery without a distributed transaction or an outbox framework.
 
 ### Slot restoration and re-merge on meeting deletion
 

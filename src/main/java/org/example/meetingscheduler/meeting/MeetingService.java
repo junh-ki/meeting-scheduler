@@ -5,8 +5,18 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.meetingscheduler.exception.ConflictException;
+import org.example.meetingscheduler.exception.ForbiddenException;
+import org.example.meetingscheduler.exception.NotFoundException;
+import org.example.meetingscheduler.exception.UnprocessableEntityException;
 import org.example.meetingscheduler.meeting.dto.MeetingCreateRequestDto;
 import org.example.meetingscheduler.meeting.dto.MeetingResponseDto;
+import org.example.meetingscheduler.notification.dto.NotificationStatus;
+import org.example.meetingscheduler.notification.entity.DeleteNotificationEntity;
+import org.example.meetingscheduler.notification.entity.ScheduleNotificationEntity;
+import org.example.meetingscheduler.notification.repository.DeleteNotificationRepository;
+import org.example.meetingscheduler.notification.repository.ScheduleNotificationRepository;
+import org.example.meetingscheduler.notification.service.NotificationEnqueueService;
 import org.example.meetingscheduler.participant.ParticipantEntity;
 import org.example.meetingscheduler.participant.ParticipantRepository;
 import org.example.meetingscheduler.timeslot.SlotBookingStatus;
@@ -14,10 +24,6 @@ import org.example.meetingscheduler.timeslot.TimeslotEntity;
 import org.example.meetingscheduler.timeslot.TimeslotRepository;
 import org.example.meetingscheduler.timeslot.TimeslotService;
 import org.example.meetingscheduler.timeslot.TimeslotSpecifications;
-import org.example.meetingscheduler.exception.ConflictException;
-import org.example.meetingscheduler.exception.ForbiddenException;
-import org.example.meetingscheduler.exception.NotFoundException;
-import org.example.meetingscheduler.exception.UnprocessableEntityException;
 import org.example.meetingscheduler.util.TimeValidationUtil;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -33,6 +39,9 @@ public class MeetingService {
     private final TimeslotRepository timeslotRepository;
     private final TimeslotService timeslotService;
     private final ParticipantRepository participantRepository;
+    private final ScheduleNotificationRepository scheduleNotificationRepository;
+    private final DeleteNotificationRepository deleteNotificationRepository;
+    private final NotificationEnqueueService notificationEnqueueService;
 
     public List<MeetingResponseDto> getMeetings(final Long userId) {
         return this.meetingRepository.findDistinctByOrganizerIdOrParticipantsUserIdOrderByStartTimeAscEndTimeAsc(userId, userId).stream()
@@ -45,6 +54,13 @@ public class MeetingService {
                                             final MeetingCreateRequestDto meetingCreateRequestDto) {
         final LocalDateTime startTime = meetingCreateRequestDto.startTime();
         final LocalDateTime endTime = meetingCreateRequestDto.endTime();
+        log.info("Creating meeting: organizerId={}, title='{}', startTime={}, endTime={}, participantCount={}",
+            organizerId,
+            meetingCreateRequestDto.title(),
+            startTime,
+            endTime,
+            meetingCreateRequestDto.participantUserIds().size()
+        );
         TimeValidationUtil.validateStartAndEndTime(startTime, endTime);
         final TimeslotEntity organizerTimeslot = findCoveringFreeSlot(
             organizerId, startTime, endTime, "No available timeslot for organizer");
@@ -65,13 +81,29 @@ public class MeetingService {
             throw new ConflictException("Meeting already exists for this time range");
         }
         try {
-            return this.meetingMapper.toDto(
-                createMeetingWithParticipants(
-                    meetingCreateRequestDto,
-                    organizerTimeslot,
-                    participantTimeslots
-                )
+            final MeetingEntity meetingEntity = createMeetingWithParticipants(
+                meetingCreateRequestDto,
+                organizerTimeslot,
+                participantTimeslots
             );
+            this.scheduleNotificationRepository.saveAll(
+                meetingEntity.getParticipants().stream()
+                    .map(participant -> ScheduleNotificationEntity.builder()
+                        .meeting(meetingEntity)
+                        .participant(participant.getUser())
+                        .status(NotificationStatus.PENDING)
+                        .build())
+                    .toList()
+            );
+            this.notificationEnqueueService.enqueueSchedule(meetingEntity.getId());
+            log.info("Meeting created: meetingId={}, organizerId={}, startTime={}, endTime={}, participantCount={}",
+                meetingEntity.getId(),
+                organizerId,
+                startTime,
+                endTime,
+                meetingEntity.getParticipants().size()
+            );
+            return this.meetingMapper.toDto(meetingEntity);
         } catch (final DataIntegrityViolationException dataIntegrityViolationException) {
             log.warn(
                 "Concurrent duplicate meeting creation rejected: organizerId={}, startTime={}, endTime={}",
@@ -132,50 +164,6 @@ public class MeetingService {
         return meetingEntity;
     }
 
-    @Transactional
-    public void deleteMeeting(final Long userId,
-                              final Long id) {
-        final MeetingEntity meetingEntity = this.meetingRepository.findById(id)
-            .orElseThrow(() -> new NotFoundException("Meeting not found"));
-        if (!meetingEntity.getOrganizer().getId().equals(userId)) {
-            throw new ForbiddenException("Meeting does not belong to this user");
-        }
-        final LocalDateTime startTime = meetingEntity.getStartTime();
-        final LocalDateTime endTime = meetingEntity.getEndTime();
-        restoreTimeslot(
-            meetingEntity.getOrganizer().getId(),
-            startTime,
-            endTime
-        );
-        meetingEntity.getParticipants()
-            .forEach(participantEntity ->
-                restoreTimeslot(
-                    participantEntity.getUser().getId(),
-                    startTime,
-                    endTime
-                )
-            );
-        this.meetingRepository.delete(meetingEntity);
-    }
-
-    private void restoreTimeslot(final Long userId,
-                                 final LocalDateTime meetingStart,
-                                 final LocalDateTime meetingEnd) {
-        this.timeslotRepository.findByOwnerIdAndStartTimeAndEndTimeAndStatus(userId, meetingStart, meetingEnd, SlotBookingStatus.BOOKED)
-            .ifPresentOrElse(
-                timeslotEntity -> {
-                    timeslotEntity.setStatus(SlotBookingStatus.FREE);
-                    this.timeslotService.mergeAdjacentFreeSlots(userId, meetingStart, meetingEnd);
-                },
-                () -> log.warn(
-                    "No BOOKED timeslot found for userId={}, start={}, end={} -- skipping restore",
-                    userId,
-                    meetingStart,
-                    meetingEnd
-                )
-            );
-    }
-
     private void mutateTimeslot(final TimeslotEntity timeslotEntity,
                                 final LocalDateTime meetingStart,
                                 final LocalDateTime meetingEnd) {
@@ -204,5 +192,70 @@ public class MeetingService {
                     .build()
             );
         }
+    }
+
+    @Transactional
+    public void deleteMeeting(final Long userId,
+                              final Long id) {
+        log.info("Deleting meeting: meetingId={}, requestedByUserId={}", id, userId);
+        final MeetingEntity meetingEntity = this.meetingRepository.findById(id)
+            .orElseThrow(() -> new NotFoundException("Meeting not found"));
+        if (!meetingEntity.getOrganizer().getId().equals(userId)) {
+            throw new ForbiddenException("Meeting does not belong to this user");
+        }
+        final LocalDateTime startTime = meetingEntity.getStartTime();
+        final LocalDateTime endTime = meetingEntity.getEndTime();
+        restoreTimeslot(
+            meetingEntity.getOrganizer().getId(),
+            startTime,
+            endTime
+        );
+        meetingEntity.getParticipants()
+            .forEach(participantEntity ->
+                restoreTimeslot(
+                    participantEntity.getUser().getId(),
+                    startTime,
+                    endTime
+                )
+            );
+        this.deleteNotificationRepository.saveAll(
+            meetingEntity.getParticipants().stream()
+                .map(participant -> DeleteNotificationEntity.builder()
+                    .meetingId(meetingEntity.getId())
+                    .meetingTitle(meetingEntity.getTitle())
+                    .meetingStartTime(meetingEntity.getStartTime())
+                    .meetingEndTime(meetingEntity.getEndTime())
+                    .participant(participant.getUser())
+                    .status(NotificationStatus.PENDING)
+                    .build())
+                .toList()
+        );
+        this.meetingRepository.delete(meetingEntity);
+        this.notificationEnqueueService.enqueueDelete(id);
+        log.info("Meeting deleted: meetingId={}, organizerId={}, startTime={}, endTime={}, participantCount={}",
+            id,
+            meetingEntity.getOrganizer().getId(),
+            startTime,
+            endTime,
+            meetingEntity.getParticipants().size()
+        );
+    }
+
+    private void restoreTimeslot(final Long userId,
+                                 final LocalDateTime meetingStart,
+                                 final LocalDateTime meetingEnd) {
+        this.timeslotRepository.findByOwnerIdAndStartTimeAndEndTimeAndStatus(userId, meetingStart, meetingEnd, SlotBookingStatus.BOOKED)
+            .ifPresentOrElse(
+                timeslotEntity -> {
+                    timeslotEntity.setStatus(SlotBookingStatus.FREE);
+                    this.timeslotService.mergeAdjacentFreeSlots(userId, meetingStart, meetingEnd);
+                },
+                () -> log.error(
+                    "No BOOKED timeslot found for userId={}, start={}, end={} -- skipping restore",
+                    userId,
+                    meetingStart,
+                    meetingEnd
+                )
+            );
     }
 }

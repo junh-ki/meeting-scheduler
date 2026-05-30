@@ -46,6 +46,12 @@ until docker compose exec -T postgres \
 done
 info "Postgres is ${GREEN}ready${RESET}."
 
+info "Waiting for Redis to accept connections..."
+until docker compose exec -T redis redis-cli ping > /dev/null 2>&1; do
+  sleep 1
+done
+info "Redis is ${GREEN}ready${RESET}."
+
 # ── 2. build ──────────────────────────────────────────────────────────────────
 info "Building application ${DIM}(tests skipped)${RESET}..."
 ./mvnw clean package -DskipTests -q

@@ -1,10 +1,19 @@
 package org.example.meetingscheduler;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.example.meetingscheduler.meeting.MeetingEntity;
 import org.example.meetingscheduler.meeting.MeetingRepository;
+import org.example.meetingscheduler.notification.dto.NotificationStatus;
+import org.example.meetingscheduler.notification.entity.DeleteNotificationEntity;
+import org.example.meetingscheduler.notification.entity.ScheduleNotificationEntity;
+import org.example.meetingscheduler.notification.repository.DeleteNotificationRepository;
+import org.example.meetingscheduler.notification.repository.ScheduleNotificationRepository;
+import org.example.meetingscheduler.notification.service.NotificationEnqueueService;
+import org.example.meetingscheduler.notification.service.NotificationFeignClient;
+import org.example.meetingscheduler.participant.ParticipantEntity;
 import org.example.meetingscheduler.participant.ParticipantRepository;
 import org.example.meetingscheduler.timeslot.SlotBookingStatus;
 import org.example.meetingscheduler.timeslot.TimeslotEntity;
@@ -13,17 +22,22 @@ import org.example.meetingscheduler.user.UserEntity;
 import org.example.meetingscheduler.user.UserRepository;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -41,7 +55,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "spring.datasource.driver-class-name=org.h2.Driver",
     "spring.jpa.hibernate.ddl-auto=create-drop",
     "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
-    "spring.flyway.enabled=false"
+    "spring.flyway.enabled=false",
+    "management.health.redis.enabled=false"
 })
 class MeetingSchedulerIntegrationTest {
 
@@ -61,6 +76,18 @@ class MeetingSchedulerIntegrationTest {
     private MeetingRepository meetingRepository;
     @MockitoBean
     private ParticipantRepository participantRepository;
+    @MockitoBean
+    private ScheduleNotificationRepository scheduleNotificationRepository;
+    @MockitoBean
+    private DeleteNotificationRepository deleteNotificationRepository;
+    @MockitoBean
+    private NotificationEnqueueService notificationEnqueueService;
+    @MockitoBean
+    private NotificationFeignClient notificationFeignClient;
+    @MockitoBean
+    private RedisConnectionFactory redisConnectionFactory;
+    @MockitoBean
+    private ReactiveRedisConnectionFactory reactiveRedisConnectionFactory;
 
     @Nested
     class timeslots {
@@ -302,6 +329,79 @@ class MeetingSchedulerIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403))
                 .andExpect(jsonPath("$.message").value("Meeting does not belong to this user"));
+        }
+
+        @Test
+        void createMeeting_savesScheduleNotificationForEachParticipant() throws Exception {
+            // Arrange
+            final TimeslotEntity organizerSlot = TimeslotEntity.builder()
+                .id(10L).owner(ALICE).startTime(START).endTime(END).status(SlotBookingStatus.FREE).build();
+            final TimeslotEntity participantSlot = TimeslotEntity.builder()
+                .id(20L).owner(BOB).startTime(START).endTime(END).status(SlotBookingStatus.FREE).build();
+            when(timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
+                .thenReturn(List.of(organizerSlot))
+                .thenReturn(List.of(participantSlot));
+            when(meetingRepository.existsByOrganizerIdAndStartTimeAndEndTime(1L, START, END)).thenReturn(false);
+
+            final MeetingEntity savedMeeting = MeetingEntity.builder()
+                .id(42L).title("Sync").startTime(START).endTime(END)
+                .organizer(ALICE).participants(new ArrayList<>()).build();
+            when(meetingRepository.save(any())).thenReturn(savedMeeting);
+
+            final ParticipantEntity bobParticipant = ParticipantEntity.builder()
+                .id(1L).meeting(savedMeeting).user(BOB).build();
+            when(participantRepository.saveAll(any())).thenReturn(List.of(bobParticipant));
+            when(scheduleNotificationRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            // Act
+            mockMvc.perform(post("/users/1/meetings")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\"title\":\"Sync\",\"startTime\":\"2026-05-10T10:00:00\",\"endTime\":\"2026-05-10T11:00:00\",\"participantUserIds\":[2]}"))
+                .andExpect(status().isCreated());
+
+            // Assert - one schedule_notification row per participant, written in the same transaction
+            @SuppressWarnings("unchecked")
+            final ArgumentCaptor<List<ScheduleNotificationEntity>> captor =
+                ArgumentCaptor.forClass(List.class);
+            verify(scheduleNotificationRepository).saveAll(captor.capture());
+            final List<ScheduleNotificationEntity> saved = captor.getValue();
+            final ScheduleNotificationEntity firstSaved = saved.getFirst();
+            assertThat(saved).hasSize(1);
+            assertThat(firstSaved.getParticipant()).isEqualTo(BOB);
+            assertThat(firstSaved.getMeeting()).isEqualTo(savedMeeting);
+            assertThat(firstSaved.getStatus()).isEqualTo(NotificationStatus.PENDING);
+        }
+
+        @Test
+        void deleteMeeting_savesDeleteNotificationForEachParticipant() throws Exception {
+            // Arrange
+            final MeetingEntity meeting = MeetingEntity.builder()
+                .id(42L).title("Sync").startTime(START).endTime(END)
+                .organizer(ALICE).participants(new ArrayList<>()).build();
+            final ParticipantEntity bobParticipant = ParticipantEntity.builder()
+                .id(1L).meeting(meeting).user(BOB).build();
+            meeting.setParticipants(new ArrayList<>(List.of(bobParticipant)));
+            when(meetingRepository.findById(42L)).thenReturn(Optional.of(meeting));
+            when(timeslotRepository.findByOwnerIdAndStartTimeAndEndTimeAndStatus(any(), any(), any(), any()))
+                .thenReturn(Optional.empty());
+            when(deleteNotificationRepository.saveAll(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            // Act
+            mockMvc.perform(delete("/users/1/meetings/42"))
+                .andExpect(status().isNoContent());
+
+            // Assert - one delete_notification row per participant, written in the same transaction
+            @SuppressWarnings("unchecked")
+            final ArgumentCaptor<List<DeleteNotificationEntity>> captor =
+                ArgumentCaptor.forClass(List.class);
+            verify(deleteNotificationRepository).saveAll(captor.capture());
+            final List<DeleteNotificationEntity> saved = captor.getValue();
+            final DeleteNotificationEntity firstSaved = saved.getFirst();
+            assertThat(saved).hasSize(1);
+            assertThat(firstSaved.getParticipant()).isEqualTo(BOB);
+            assertThat(firstSaved.getMeetingId()).isEqualTo(42L);
+            assertThat(firstSaved.getMeetingTitle()).isEqualTo("Sync");
+            assertThat(firstSaved.getStatus()).isEqualTo(NotificationStatus.PENDING);
         }
     }
 }

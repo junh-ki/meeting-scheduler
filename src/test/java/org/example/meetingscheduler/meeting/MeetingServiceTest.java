@@ -11,6 +11,9 @@ import org.example.meetingscheduler.exception.NotFoundException;
 import org.example.meetingscheduler.exception.UnprocessableEntityException;
 import org.example.meetingscheduler.meeting.dto.MeetingCreateRequestDto;
 import org.example.meetingscheduler.meeting.dto.MeetingResponseDto;
+import org.example.meetingscheduler.notification.repository.DeleteNotificationRepository;
+import org.example.meetingscheduler.notification.repository.ScheduleNotificationRepository;
+import org.example.meetingscheduler.notification.service.NotificationEnqueueService;
 import org.example.meetingscheduler.participant.ParticipantEntity;
 import org.example.meetingscheduler.participant.ParticipantRepository;
 import org.example.meetingscheduler.participant.ParticipantResponseDto;
@@ -53,6 +56,12 @@ class MeetingServiceTest {
     private TimeslotService timeslotService;
     @Mock
     private ParticipantRepository participantRepository;
+    @Mock
+    private ScheduleNotificationRepository scheduleNotificationRepository;
+    @Mock
+    private DeleteNotificationRepository deleteNotificationRepository;
+    @Mock
+    private NotificationEnqueueService notificationEnqueueService;
 
     @Nested
     class getMeetings {
