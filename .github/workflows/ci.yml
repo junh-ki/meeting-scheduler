@@ -23,5 +23,8 @@ jobs:
       - name: Build
         run: ./mvnw clean compile test-compile
 
-      - name: Test
-        run: ./mvnw surefire:test
+      - name: Unit tests # No database service needed - unit tests use Mockito
+        run: ./mvnw surefire:test -Dexcludes="**/*IntegrationTest.java"
+
+      - name: Integration tests # No database service needed - integration tests use H2 in-memory
+        run: ./mvnw surefire:test -Dincludes="**/*IntegrationTest.java"
