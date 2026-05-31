@@ -3,6 +3,7 @@ package org.example.meetingscheduler.timeslot;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.meetingscheduler.exception.ConflictException;
 import org.example.meetingscheduler.exception.ForbiddenException;
 import org.example.meetingscheduler.exception.NotFoundException;
@@ -16,6 +17,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class TimeslotService {
@@ -28,6 +30,7 @@ public class TimeslotService {
     public TimeslotResponseDto createTimeslot(final Long userId,
                                               final LocalDateTime startTime,
                                               final LocalDateTime endTime) {
+        log.info("Creating timeslot: userId={}, startTime={}, endTime={}", userId, startTime, endTime);
         TimeValidationUtil.validateStartAndEndTime(startTime, endTime);
         final UserEntity owner = this.userRepository.findByIdIs(userId)
             .orElseThrow(() -> new NotFoundException("User not found"));
@@ -41,11 +44,14 @@ public class TimeslotService {
                 .anyMatch(overlappingTimeslot -> SlotBookingStatus.BOOKED == overlappingTimeslot.getStatus())) {
                 throw new ConflictException("New timeslot overlaps with a BOOKED timeslot");
             }
-            return this.timeslotMapper.toDto(
+            final TimeslotResponseDto merged = this.timeslotMapper.toDto(
                 mergeInto(overlappingTimeslots, startTime, endTime)
             );
+            log.info("Timeslot created (merged): timeslotId={}, userId={}, startTime={}, endTime={}",
+                merged.id(), userId, merged.startTime(), merged.endTime());
+            return merged;
         }
-        return this.timeslotMapper.toDto(
+        final TimeslotResponseDto created = this.timeslotMapper.toDto(
             this.timeslotRepository.save(
                 TimeslotEntity.builder()
                     .owner(owner)
@@ -55,6 +61,9 @@ public class TimeslotService {
                     .build()
             )
         );
+        log.info("Timeslot created: timeslotId={}, userId={}, startTime={}, endTime={}",
+            created.id(), userId, created.startTime(), created.endTime());
+        return created;
     }
 
     private void validateNotCoveredByExistingSlot(final Long userId,
@@ -115,6 +124,7 @@ public class TimeslotService {
     public TimeslotResponseDto updateTimeslot(final Long userId,
                                               final Long id,
                                               final TimeslotUpdateRequestDto timeslotUpdateRequestDto) {
+        log.info("Updating timeslot: timeslotId={}, requestedByUserId={}", id, userId);
         final TimeslotEntity timeslotEntity = this.timeslotRepository.findById(id)
             .orElseThrow(() -> new NotFoundException("Timeslot not found"));
         if (!timeslotEntity.getOwner().getId().equals(userId)) {
@@ -135,12 +145,16 @@ public class TimeslotService {
         if (timeslotUpdateRequestDto.status() != null) {
             timeslotEntity.setStatus(timeslotUpdateRequestDto.status());
         }
-        return this.timeslotMapper.toDto(timeslotEntity);
+        final TimeslotResponseDto updated = this.timeslotMapper.toDto(timeslotEntity);
+        log.info("Timeslot updated: timeslotId={}, userId={}, startTime={}, endTime={}, status={}",
+            id, userId, updated.startTime(), updated.endTime(), updated.status());
+        return updated;
     }
 
     @Transactional
     public void deleteTimeslot(final Long userId,
                                final Long id) {
+        log.info("Deleting timeslot: timeslotId={}, requestedByUserId={}", id, userId);
         final TimeslotEntity timeslotEntity = this.timeslotRepository.findById(id)
             .orElseThrow(() -> new NotFoundException("Timeslot not found"));
         if (!timeslotEntity.getOwner().getId().equals(userId)) {
@@ -150,6 +164,7 @@ public class TimeslotService {
             throw new ConflictException("Timeslot is in use by a meeting -- delete the meeting instead");
         }
         this.timeslotRepository.deleteById(id);
+        log.info("Timeslot deleted: timeslotId={}, userId={}", id, userId);
     }
 
     public List<TimeslotResponseDto> getTimeslots(final Long userId,
