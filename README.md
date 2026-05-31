@@ -115,10 +115,11 @@ Deleting a meeting restores each BOOKED slot back to FREE and triggers the same 
 
 ### Concurrency design
 
-Two layers protect against concurrent booking of the same slot:
+Three layers protect against concurrent booking of the same slot:
 
 1. **Pessimistic write lock** (`SELECT FOR UPDATE`) on the user row at timeslot creation time, serializing all slot writes for a given user so overlap checks are race-free.
-2. **UNIQUE constraints** on `(owner_id, start_time, end_time)` in `timeslot` and `(organizer_id, start_time, end_time)` in `meeting` as a final safety net for requests that pass the application-level check simultaneously.
+2. **Pessimistic write lock** (`SELECT FOR UPDATE`) on the timeslot row at deletion time, preventing a concurrent `createMeeting` from booking the slot in the window between the FREE status check and the row delete.
+3. **UNIQUE constraints** on `(owner_id, start_time, end_time)` in `timeslot` and `(organizer_id, start_time, end_time)` in `meeting` as a final safety net for requests that pass the application-level check simultaneously.
 
 ### Performance at scale
 
