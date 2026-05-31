@@ -151,11 +151,15 @@ public class TimeslotService {
         return updated;
     }
 
+    /**
+     * Pessimistic lock on the timeslot row prevents a concurrent createMeeting from booking it between the FREE status check and the deletion,
+     * which would delete a BOOKED timeslot and leave the meeting referencing a non-existent row.
+     */
     @Transactional
     public void deleteTimeslot(final Long userId,
                                final Long id) {
         log.info("Deleting timeslot: timeslotId={}, requestedByUserId={}", id, userId);
-        final TimeslotEntity timeslotEntity = this.timeslotRepository.findById(id)
+        final TimeslotEntity timeslotEntity = this.timeslotRepository.findWithLockById(id)
             .orElseThrow(() -> new NotFoundException("Timeslot not found"));
         if (!timeslotEntity.getOwner().getId().equals(userId)) {
             throw new ForbiddenException("Timeslot does not belong to this user");

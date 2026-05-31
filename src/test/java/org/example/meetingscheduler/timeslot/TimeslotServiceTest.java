@@ -405,7 +405,7 @@ class TimeslotServiceTest {
                 .startTime(LocalDateTime.of(2026, 5, 10, 10, 0))
                 .endTime(LocalDateTime.of(2026, 5, 10, 11, 0))
                 .status(SlotBookingStatus.FREE).build();
-            when(timeslotRepository.findById(1L)).thenReturn(Optional.of(free));
+            when(timeslotRepository.findWithLockById(1L)).thenReturn(Optional.of(free));
 
             // Act
             timeslotService.deleteTimeslot(1L, 1L);
@@ -417,7 +417,7 @@ class TimeslotServiceTest {
         @Test
         void throwsNotFound_whenTimeslotDoesNotExist() {
             // Arrange
-            when(timeslotRepository.findById(99L)).thenReturn(Optional.empty());
+            when(timeslotRepository.findWithLockById(99L)).thenReturn(Optional.empty());
 
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.deleteTimeslot(1L, 99L))
@@ -433,7 +433,7 @@ class TimeslotServiceTest {
                 .startTime(LocalDateTime.of(2026, 5, 10, 10, 0))
                 .endTime(LocalDateTime.of(2026, 5, 10, 11, 0))
                 .status(SlotBookingStatus.FREE).build();
-            when(timeslotRepository.findById(1L)).thenReturn(Optional.of(free));
+            when(timeslotRepository.findWithLockById(1L)).thenReturn(Optional.of(free));
 
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.deleteTimeslot(2L, 1L))
@@ -450,7 +450,7 @@ class TimeslotServiceTest {
                 .startTime(LocalDateTime.of(2026, 5, 10, 10, 0))
                 .endTime(LocalDateTime.of(2026, 5, 10, 11, 0))
                 .status(SlotBookingStatus.BOOKED).build();
-            when(timeslotRepository.findById(10L)).thenReturn(Optional.of(booked));
+            when(timeslotRepository.findWithLockById(10L)).thenReturn(Optional.of(booked));
 
             // Act & Assert
             assertThatThrownBy(() -> timeslotService.deleteTimeslot(1L, 10L))
