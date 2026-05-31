@@ -62,12 +62,6 @@ public class MeetingService {
             meetingCreateRequestDto.participantUserIds().size()
         );
         TimeValidationUtil.validateStartAndEndTime(startTime, endTime);
-        final TimeslotEntity organizerTimeslot = findCoveringFreeSlot(
-            organizerId, startTime, endTime, "No available timeslot for organizer");
-        final List<TimeslotEntity> participantTimeslots = meetingCreateRequestDto.participantUserIds().stream()
-            .map(userId -> findCoveringFreeSlot(
-                userId, startTime, endTime, "No available timeslot for participant: " + userId))
-            .toList();
         if (this.meetingRepository.existsByOrganizerIdAndStartTimeAndEndTime(
             organizerId,
             startTime,
@@ -80,6 +74,12 @@ public class MeetingService {
             );
             throw new ConflictException("Meeting already exists for this time range");
         }
+        final TimeslotEntity organizerTimeslot = findCoveringFreeSlot(
+            organizerId, startTime, endTime, "No available timeslot for organizer");
+        final List<TimeslotEntity> participantTimeslots = meetingCreateRequestDto.participantUserIds().stream()
+            .map(userId -> findCoveringFreeSlot(
+                userId, startTime, endTime, "No available timeslot for participant: " + userId))
+            .toList();
         try {
             final MeetingEntity meetingEntity = createMeetingWithParticipants(
                 meetingCreateRequestDto,
