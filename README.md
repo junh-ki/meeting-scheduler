@@ -44,6 +44,10 @@ Typical usage flow:
 
 ## Architecture
 
+The diagram below shows the transactional outbox pattern used for at-least-once notification delivery.
+
+![Architecture](img/meeting-scheduler-arch.png)
+
 The project follows a standard layered architecture inside a single Spring Boot application.
 
 ```
