@@ -161,10 +161,6 @@ class MeetingServiceTest {
             final LocalDateTime start = LocalDateTime.of(2026, 5, 10, 10, 0);
             final LocalDateTime end = LocalDateTime.of(2026, 5, 10, 11, 0);
             final UserEntity organizer = UserEntity.builder().id(1L).name("Alice").email("alice@example.com").build();
-            final TimeslotEntity organizerSlot = TimeslotEntity.builder()
-                .id(10L).owner(organizer).startTime(start).endTime(end).status(SlotBookingStatus.FREE).build();
-            when(timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any()))
-                .thenReturn(List.of(organizerSlot));
             when(meetingRepository.existsByOrganizerIdAndStartTimeAndEndTime(1L, start, end)).thenReturn(true);
             final MeetingCreateRequestDto meetingCreateRequestDto = new MeetingCreateRequestDto("Sync", null, start, end, List.of());
 
