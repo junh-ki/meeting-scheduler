@@ -24,12 +24,13 @@ public class UserService {
     }
 
     public UserResponseDto createUser(final UserRequestDto userRequestDto) {
+        log.info("Creating user: name='{}', email={}", userRequestDto.name(), userRequestDto.email());
         if (this.userRepository.existsByEmail(userRequestDto.email())) {
             log.warn("Duplicate user creation rejected: email={}", userRequestDto.email());
             throw new ConflictException("Email is already in use");
         }
         try {
-            return this.userMapper.toDto(
+            final UserResponseDto created = this.userMapper.toDto(
                 this.userRepository.save(
                     UserEntity.builder()
                         .name(userRequestDto.name())
@@ -37,6 +38,8 @@ public class UserService {
                         .build()
                 )
             );
+            log.info("User created: userId={}, name='{}', email={}", created.id(), created.name(), created.email());
+            return created;
         } catch (final DataIntegrityViolationException dataIntegrityViolationException) {
             log.warn("Concurrent duplicate user creation rejected: email={}", userRequestDto.email());
             throw new ConflictException("Email is already in use");

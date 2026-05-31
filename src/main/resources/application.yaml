@@ -1,5 +1,9 @@
 spring:
   application.name: meeting-scheduler
+  data:
+    redis:
+      host: localhost
+      port: 6379
   datasource:
     url: jdbc:postgresql://localhost:5432/meeting_scheduler
     username: meeting_scheduler
@@ -14,6 +18,23 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+
+notification:
+  service:
+    url: https://httpbin.org/anything
+
+resilience4j:
+  retry:
+    instances:
+      notification:
+        max-attempts: 3
+        wait-duration: 2s
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+
+logging:
+  level:
+    org.example.meetingscheduler.notification.producer: DEBUG
 
 management:
   endpoints:

@@ -14,5 +14,6 @@ public interface MeetingRepository extends JpaRepository<MeetingEntity, Long> {
 
     @NullMarked
     @EntityGraph(attributePaths = {"organizer", "participants", "participants.user"})
-    List<MeetingEntity> findDistinctByOrganizerIdOrParticipantsUserIdOrderByStartTimeAscEndTimeAsc(Long organizerId, Long userId);
+    List<MeetingEntity> findDistinctByOrganizerIdOrParticipantsUserIdOrderByStartTimeAscEndTimeAsc(final Long organizerId,
+                                                                                                   final Long userId);
 }
