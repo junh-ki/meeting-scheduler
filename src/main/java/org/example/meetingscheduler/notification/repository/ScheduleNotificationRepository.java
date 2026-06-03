@@ -17,4 +17,6 @@ public interface ScheduleNotificationRepository extends JpaRepository<ScheduleNo
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<ScheduleNotificationEntity> findWithLockById(final Long id);
+
+    void deleteAllByMeetingId(final Long meetingId);
 }

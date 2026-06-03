@@ -230,6 +230,7 @@ public class MeetingService {
                     .build())
                 .toList()
         );
+        this.scheduleNotificationRepository.deleteAllByMeetingId(id);
         this.meetingRepository.delete(meetingEntity);
         this.notificationEnqueueService.enqueueDelete(id);
         log.info("Meeting deleted: meetingId={}, organizerId={}, startTime={}, endTime={}, participantCount={}",
