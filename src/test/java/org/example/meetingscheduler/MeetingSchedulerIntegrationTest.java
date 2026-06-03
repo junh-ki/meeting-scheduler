@@ -293,7 +293,7 @@ class MeetingSchedulerIntegrationTest {
             when(timeslotRepository.findAll(ArgumentMatchers.<Specification<TimeslotEntity>>any())).thenReturn(List.of());
             mockMvc.perform(post("/users/1/meetings")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"title\":\"Sync\",\"startTime\":\"2026-05-10T11:00:00\",\"endTime\":\"2026-05-10T10:00:00\",\"participantUserIds\":[]}"))
+                    .content("{\"title\":\"Sync\",\"startTime\":\"2026-05-10T11:00:00\",\"endTime\":\"2026-05-10T10:00:00\",\"participantUserIds\":[2]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.message").value("endTime must be after startTime"));
